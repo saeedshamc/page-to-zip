@@ -242,6 +242,7 @@ async function buildZipForTab(tab) {
   const usedNames = new Set();
   const urlToLocalPath = new Map(); // absoluteURL -> relative path inside zip (relative to index.html)
   const cssTextCache = new Map(); // absoluteURL -> css text (to rewrite later)
+  const skippedResources = []; // track resources that couldn't be downloaded
 
   // صف اولیه: منابع پیدا شده در HTML
   const queue = [...pageData.resources];
@@ -285,6 +286,7 @@ async function buildZipForTab(tab) {
       // منبعی که قابل دانلود نبود (مثلاً CORS) را نادیده می‌گیریم؛
       // لینک اصلی در HTML دست‌نخورده باقی می‌ماند.
       console.warn('[PageDownloader] Skipped resource:', url, e.message);
+      skippedResources.push(`${url} - ${e.message}`);
     }
   }
 
@@ -333,6 +335,12 @@ async function buildZipForTab(tab) {
   }
 
   zip.file('index.html', html);
+
+  // فایل گزارش خطاها
+  if (skippedResources.length > 0) {
+    const report = skippedResources.join('\n');
+    zip.file('SKIPPED_RESOURCES.txt', `These resources could not be downloaded (CORS, network errors, etc.):\n\n${report}`);
+  }
 
   // راهنما + سرور محلی کوچک، چون خیلی از سایت‌های امروزی از
   // <script type="module"> استفاده می‌کنند که مرورگر روی file:// اجازه‌ی
