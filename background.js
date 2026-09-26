@@ -221,6 +221,23 @@ function guessFolder(url, contentType) {
   return 'assets/misc';
 }
 
+// بررسی اینکه آیا باید این منبع دانلود شود بر اساس تنظیمات
+function shouldDownloadResource(folder, contentType) {
+  if (!currentSettings.includeImages && (folder === 'assets/img' || contentType?.includes('image'))) {
+    return false;
+  }
+  if (!currentSettings.includeVideos && (folder === 'assets/video' || contentType?.includes('video'))) {
+    return false;
+  }
+  if (!currentSettings.includeAudio && (folder === 'assets/audio' || contentType?.includes('audio'))) {
+    return false;
+  }
+  if (!currentSettings.includeFonts && (folder === 'assets/fonts' || contentType?.includes('font'))) {
+    return false;
+  }
+  return true;
+}
+
 function safeFileName(url, usedNames) {
   const path = url.split('?')[0].split('#')[0];
   let name = decodeURIComponent(path.split('/').pop() || 'file');
@@ -238,7 +255,30 @@ function safeFileName(url, usedNames) {
 }
 
 // محدودیت حجم فایل‌ها (برای جلوگیری از دانلود فایل‌های خیلی بزرگ)
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+let MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+// تنظیمات فعلی
+let currentSettings = {
+  includeImages: true,
+  includeVideos: true,
+  includeAudio: true,
+  includeFonts: true,
+  maxFileSize: 50,
+  followRedirects: true
+};
+
+// بارگذاری تنظیمات
+async function loadSettings() {
+  try {
+    const result = await chrome.storage.local.get('downloadSettings');
+    if (result.downloadSettings) {
+      currentSettings = result.downloadSettings;
+      MAX_FILE_SIZE = currentSettings.maxFileSize * 1024 * 1024;
+    }
+  } catch (e) {
+    console.warn('[PageDownloader] Failed to load settings:', e);
+  }
+}
 
 async function fetchAsArrayBuffer(url) {
   const res = await fetch(url, { credentials: 'include' });
@@ -313,6 +353,14 @@ async function buildZipForTab(tab) {
     try {
       const { buf, contentType } = await fetchWithRetry(url);
       const folder = guessFolder(url, contentType);
+
+      // بررسی تنظیمات کاربر
+      if (!shouldDownloadResource(folder, contentType)) {
+        console.log('[PageDownloader] Skipping resource based on settings:', url);
+        skippedResources.push(`${url} - Skipped by user settings`);
+        continue;
+      }
+
       const fileName = safeFileName(url, usedNames);
       const relPath = `${folder}/${fileName}`;
       zip.file(relPath, buf);
@@ -444,18 +492,35 @@ function setBadge(text, color) {
   if (color) chrome.action.setBadgeBackgroundColor({ color });
 }
 
-chrome.action.onClicked.addListener(async (tab) => {
-  console.log('[PageDownloader] کلیک شد. تب:', tab && tab.id, tab && tab.url);
-
-  if (!tab.id || !/^https?:/.test(tab.url || '')) {
-    console.warn('[PageDownloader] این صفحه قابل دانلود نیست (فقط http/https پشتیبانی می‌شود).');
-    setBadge('✕', '#e11d48');
-    setTimeout(() => setBadge(''), 3000);
-    return;
+// هندل کردن پیام از popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'downloadPage') {
+    handleDownload(request.tabId, request.settings);
+    return true;
   }
+});
 
-  setBadge('0%', '#6b7280');
+// تابع هندل کردن دانلود
+async function handleDownload(tabId, settings = null) {
   try {
+    const tab = await chrome.tabs.get(tabId);
+
+    if (!tab.id || !/^https?:/.test(tab.url || '')) {
+      console.warn('[PageDownloader] این صفحه قابل دانلود نیست (فقط http/https پشتیبانی می‌شود).');
+      setBadge('✕', '#e11d48');
+      setTimeout(() => setBadge(''), 3000);
+      return;
+    }
+
+    // اگر تنظیمات از popup آمده، آن را اعمال کن
+    if (settings) {
+      currentSettings = settings;
+      MAX_FILE_SIZE = settings.maxFileSize * 1024 * 1024;
+    } else {
+      await loadSettings();
+    }
+
+    setBadge('0%', '#6b7280');
     const { base64, title } = await buildZipForTab(tab);
     const filename = `${sanitizeZipName(title)}.zip`;
     const dataUrl = `data:application/zip;base64,${base64}`;
@@ -478,4 +543,13 @@ chrome.action.onClicked.addListener(async (tab) => {
   } finally {
     setTimeout(() => setBadge(''), 4000);
   }
+}
+
+// بارگذاری تنظیمات در startup
+loadSettings();
+
+// هندل کردن کلیک روی آیکون (fallback در صورت نبود popup)
+chrome.action.onClicked.addListener(async (tab) => {
+  console.log('[PageDownloader] کلیک شد. تب:', tab && tab.id, tab && tab.url);
+  await handleDownload(tab.id);
 });
