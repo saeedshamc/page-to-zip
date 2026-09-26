@@ -3,7 +3,7 @@
   "name": "Full Page Downloader (HTML+Assets ZIP)",
   "version": "2.0.0",
   "description": "دانلود کامل هر صفحه وب به همراه تمام فایل‌های وابسته (CSS، JS، تصاویر، فونت‌ها) در قالب یک فایل ZIP",
-  "permissions": ["activeTab", "scripting", "downloads", "notifications", "storage"],
+  "permissions": ["activeTab", "scripting", "downloads", "notifications", "storage", "tabs"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

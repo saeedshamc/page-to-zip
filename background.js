@@ -636,6 +636,7 @@ async function crawlAndDownload(startTab) {
 
     console.log('[PageDownloader] Crawling:', url, 'Depth:', depth);
 
+    let createdTab = null;
     try {
       // ایجاد تب جدید برای خزش (یا استفاده از تب موجود)
       let tab;
@@ -643,6 +644,7 @@ async function crawlAndDownload(startTab) {
         tab = startTab;
       } else {
         tab = await chrome.tabs.create({ url, active: false });
+        createdTab = tab;
         // صبر برای لود شدن صفحه
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
@@ -739,18 +741,20 @@ async function crawlAndDownload(startTab) {
       totalPages++;
 
       // بستن تب اگر ایجاد شده بود
-      if (depth > 0) {
-        await chrome.tabs.remove(tab.id);
+      if (createdTab) {
+        await chrome.tabs.remove(createdTab.id);
+        createdTab = null;
       }
 
     } catch (e) {
       console.error('[PageDownloader] Error crawling page:', url, e);
-      if (depth > 0) {
+      if (createdTab) {
         try {
-          await chrome.tabs.remove(tab.id);
+          await chrome.tabs.remove(createdTab.id);
         } catch (tabError) {
           console.warn('[PageDownloader] Error closing tab:', tabError);
         }
+        createdTab = null;
       }
     }
   }
