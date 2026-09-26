@@ -194,6 +194,20 @@ function extractCssUrls(cssText, cssBaseURI) {
       } catch (e) {}
     }
   }
+  // استخراج از mask-image و clip-path
+  const maskRegex = /(?:mask-image|clip-path|mask):\s*([^;]+)/g;
+  while ((m = maskRegex.exec(cssText)) !== null) {
+    const maskValue = m[1];
+    const maskUrlRegex = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+    let maskMatch;
+    while ((maskMatch = maskUrlRegex.exec(maskValue)) !== null) {
+      const raw = maskMatch[2];
+      if (raw.startsWith('data:') || raw.startsWith('#')) continue;
+      try {
+        urls.add(new URL(raw, cssBaseURI).href);
+      } catch (e) {}
+    }
+  }
   return Array.from(urls);
 }
 
