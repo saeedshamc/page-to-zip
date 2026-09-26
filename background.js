@@ -289,13 +289,14 @@ async function buildZipForTab(tab) {
   }
 
   // بازنویسی متن CSSها با مسیرهای لوکال
-  // CSS در assets/css/ است و باید به سایر پوشه‌های assets/ رفرنس بدهد
+  // مسیرهای نسبی را بر اساس محل فایل CSS محاسبه می‌کنیم
   const cssMapping = new Map();
   urlToLocalPath.forEach((localPath, origUrl) => {
-    // مسیر نسبی از assets/css/ به سایر پوشه‌ها
+    // برای هر منبع، مسیر نسبی آن را به روت assets/ محاسبه می‌کنیم
+    // مثلاً assets/img/logo.png -> ../img/logo.png
+    // assets/css/style.css -> ../css/style.css
     if (localPath.startsWith('assets/')) {
-      const relativeFromCss = localPath.replace('assets/', '../');
-      cssMapping.set(origUrl, relativeFromCss);
+      cssMapping.set(origUrl, `../${localPath.replace('assets/', '')}`);
     } else {
       cssMapping.set(origUrl, localPath);
     }
