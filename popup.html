@@ -47,6 +47,17 @@
       border-radius: 4px;
       font-size: 12px;
     }
+    .separator {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 15px 0;
+    }
+    h3 {
+      margin: 0 0 10px 0;
+      color: #666;
+      font-size: 14px;
+      text-align: center;
+    }
     .btn {
       width: 100%;
       padding: 10px;
@@ -126,6 +137,35 @@
     <div class="option">
       <label for="followRedirects">پیروی از ریدایرکت‌ها</label>
       <input type="checkbox" id="followRedirects" checked>
+    </div>
+    
+    <div class="separator"></div>
+    
+    <h3>تنظیمات خزش (Crawling)</h3>
+    
+    <div class="option">
+      <label for="enableCrawling">فعال‌سازی خزش صفحات</label>
+      <input type="checkbox" id="enableCrawling">
+    </div>
+    
+    <div class="option">
+      <label for="crawlDepth">عمق خزش (تعداد لایه)</label>
+      <input type="number" id="crawlDepth" value="1" min="1" max="5">
+    </div>
+    
+    <div class="option">
+      <label for="maxPages">حداکثر صفحات</label>
+      <input type="number" id="maxPages" value="10" min="1" max="100">
+    </div>
+    
+    <div class="option">
+      <label for="followInternalLinks">فقط لینک‌های داخلی</label>
+      <input type="checkbox" id="followInternalLinks" checked>
+    </div>
+    
+    <div class="option">
+      <label for="sameDomain">فقط همان دامنه</label>
+      <input type="checkbox" id="sameDomain" checked>
     </div>
     
     <button id="downloadBtn" class="btn btn-download">دانلود صفحه</button>

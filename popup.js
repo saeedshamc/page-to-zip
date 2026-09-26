@@ -5,7 +5,12 @@ const defaultSettings = {
   includeAudio: true,
   includeFonts: true,
   maxFileSize: 50,
-  followRedirects: true
+  followRedirects: true,
+  enableCrawling: false,
+  crawlDepth: 1,
+  maxPages: 10,
+  followInternalLinks: true,
+  sameDomain: true
 };
 
 // بارگذاری تنظیمات از chrome.storage
@@ -89,19 +94,24 @@ async function startDownload() {
 // مقداردهی اولیه
 async function init() {
   const settings = await loadSettings();
-  
+
   document.getElementById('includeImages').checked = settings.includeImages;
   document.getElementById('includeVideos').checked = settings.includeVideos;
   document.getElementById('includeAudio').checked = settings.includeAudio;
   document.getElementById('includeFonts').checked = settings.includeFonts;
   document.getElementById('maxFileSize').value = settings.maxFileSize;
   document.getElementById('followRedirects').checked = settings.followRedirects;
-  
+  document.getElementById('enableCrawling').checked = settings.enableCrawling;
+  document.getElementById('crawlDepth').value = settings.crawlDepth;
+  document.getElementById('maxPages').value = settings.maxPages;
+  document.getElementById('followInternalLinks').checked = settings.followInternalLinks;
+  document.getElementById('sameDomain').checked = settings.sameDomain;
+
   // اضافه کردن event listeners
   document.getElementById('downloadBtn').addEventListener('click', startDownload);
-  
+
   // ذخیره تنظیمات هنگام تغییر
-  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects'];
+  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('change', async () => {
       const newSettings = {
@@ -110,7 +120,12 @@ async function init() {
         includeAudio: document.getElementById('includeAudio').checked,
         includeFonts: document.getElementById('includeFonts').checked,
         maxFileSize: parseInt(document.getElementById('maxFileSize').value),
-        followRedirects: document.getElementById('followRedirects').checked
+        followRedirects: document.getElementById('followRedirects').checked,
+        enableCrawling: document.getElementById('enableCrawling').checked,
+        crawlDepth: parseInt(document.getElementById('crawlDepth').value),
+        maxPages: parseInt(document.getElementById('maxPages').value),
+        followInternalLinks: document.getElementById('followInternalLinks').checked,
+        sameDomain: document.getElementById('sameDomain').checked
       };
       await saveSettings(newSettings);
     });
