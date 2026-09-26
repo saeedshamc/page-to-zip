@@ -148,6 +148,42 @@ function collectPageData() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// تابعی که لینک‌ها را از صفحه استخراج می‌کند برای خزش
+// ---------------------------------------------------------------------------
+function extractLinks() {
+  const abs = (u) => {
+    try {
+      if (u.startsWith('data:') || u.startsWith('blob:') || u.startsWith('javascript:') || u.startsWith('mailto:') || u.startsWith('tel:')) return null;
+      return new URL(u, document.baseURI).href;
+    } catch (e) { return null; }
+  };
+
+  const links = new Set();
+
+  // لینک‌های معمولی <a>
+  document.querySelectorAll('a[href]').forEach((el) => {
+    const u = abs(el.getAttribute('href'));
+    if (u && /^https?:/.test(u)) {
+      links.add(u);
+    }
+  });
+
+  // لینک‌های navigation
+  document.querySelectorAll('area[href]').forEach((el) => {
+    const u = abs(el.getAttribute('href'));
+    if (u && /^https?:/.test(u)) {
+      links.add(u);
+    }
+  });
+
+  return {
+    links: Array.from(links),
+    currentUrl: document.baseURI,
+    domain: new URL(document.baseURI).hostname
+  };
+}
+
 // استخراج آدرس url(...) و @import و @font-face از متن CSS
 function extractCssUrls(cssText, cssBaseURI) {
   const urls = new Set();
@@ -278,7 +314,12 @@ let currentSettings = {
   includeAudio: true,
   includeFonts: true,
   maxFileSize: 50,
-  followRedirects: true
+  followRedirects: true,
+  enableCrawling: false,
+  crawlDepth: 1,
+  maxPages: 10,
+  followInternalLinks: true,
+  sameDomain: true
 };
 
 // بارگذاری تنظیمات
@@ -535,7 +576,15 @@ async function handleDownload(tabId, settings = null) {
     }
 
     setBadge('0%', '#6b7280');
-    const { base64, title } = await buildZipForTab(tab);
+
+    let zipData;
+    if (currentSettings.enableCrawling) {
+      zipData = await crawlAndDownload(tab);
+    } else {
+      zipData = await buildZipForTab(tab);
+    }
+
+    const { base64, title } = zipData;
     const filename = `${sanitizeZipName(title)}.zip`;
     const dataUrl = `data:application/zip;base64,${base64}`;
 
@@ -557,6 +606,236 @@ async function handleDownload(tabId, settings = null) {
   } finally {
     setTimeout(() => setBadge(''), 4000);
   }
+}
+
+// ---------------------------------------------------------------------------
+// منطق خزش صفحات با کنترل عمق و تعداد صفحات
+// ---------------------------------------------------------------------------
+async function crawlAndDownload(startTab) {
+  const visitedUrls = new Set();
+  const urlQueue = [{ url: startTab.url, depth: 0 }];
+  const baseDomain = new URL(startTab.url).hostname;
+  const downloadedPages = [];
+  let totalPages = 0;
+
+  const zip = new JSZip();
+  const usedNames = new Set();
+  const urlToLocalPath = new Map();
+  const cssTextCache = new Map();
+  const skippedResources = [];
+
+  while (urlQueue.length > 0 && totalPages < currentSettings.maxPages) {
+    const { url, depth } = urlQueue.shift();
+
+    // بررسی اینکه آیا قبلاً بازدید شده
+    if (visitedUrls.has(url)) continue;
+    visitedUrls.add(url);
+
+    // بررسی عمق
+    if (depth > currentSettings.crawlDepth) continue;
+
+    console.log('[PageDownloader] Crawling:', url, 'Depth:', depth);
+
+    try {
+      // ایجاد تب جدید برای خزش (یا استفاده از تب موجود)
+      let tab;
+      if (depth === 0) {
+        tab = startTab;
+      } else {
+        tab = await chrome.tabs.create({ url, active: false });
+        // صبر برای لود شدن صفحه
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      // استخراج لینک‌ها و منابع
+      const [{ result: pageData }] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: collectPageData,
+      });
+
+      const [{ result: linkData }] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: extractLinks,
+      });
+
+      // فیلتر کردن لینک‌ها بر اساس تنظیمات
+      const filteredLinks = filterLinks(linkData.links, baseDomain, linkData.domain);
+
+      // اضافه کردن لینک‌های فیلتر شده به صف
+      filteredLinks.forEach(link => {
+        if (!visitedUrls.has(link)) {
+          urlQueue.push({ url: link, depth: depth + 1 });
+        }
+      });
+
+      // پردازش منابع صفحه
+      const resources = pageData.resources;
+      const queue = [...resources];
+      const seen = new Set(queue);
+      let totalResources = queue.length;
+      let downloadedCount = 0;
+
+      while (queue.length) {
+        const resourceUrl = queue.shift();
+        if (urlToLocalPath.has(resourceUrl)) continue;
+        try {
+          const { buf, contentType } = await fetchWithRetry(resourceUrl);
+          const folder = guessFolder(resourceUrl, contentType);
+
+          if (!shouldDownloadResource(folder, contentType)) {
+            console.log('[PageDownloader] Skipping resource based on settings:', resourceUrl);
+            skippedResources.push(`${resourceUrl} - Skipped by user settings`);
+            continue;
+          }
+
+          const fileName = safeFileName(resourceUrl, usedNames);
+          const relPath = `${folder}/${fileName}`;
+          zip.file(relPath, buf);
+          urlToLocalPath.set(resourceUrl, relPath);
+          downloadedCount++;
+
+          if (downloadedCount % 5 === 0 || queue.length === 0) {
+            const progress = Math.round((downloadedCount / totalResources) * 100);
+            setBadge(`${progress}%`, '#6b7280');
+          }
+
+          if (folder === 'assets/css' || contentType.includes('css')) {
+            const text = new TextDecoder('utf-8').decode(buf);
+            cssTextCache.set(resourceUrl, text);
+            const nested = extractCssUrls(text, resourceUrl);
+            nested.forEach((nUrl) => {
+              if (!seen.has(nUrl)) {
+                seen.add(nUrl);
+                queue.push(nUrl);
+                totalResources++;
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('[PageDownloader] Skipped resource:', resourceUrl, e.message);
+          skippedResources.push(`${resourceUrl} - ${e.message}`);
+        }
+      }
+
+      // ذخیره صفحه HTML
+      const safeTitle = sanitizeZipName(pageData.title);
+      const pageFileName = depth === 0 ? 'index.html' : `pages/${safeTitle}_${totalPages}.html`;
+
+      let html = applyUrlReplacements(pageData.html, urlToLocalPath);
+      html = html.replace(/<base\b[^>]*>/gi, '');
+      html = html.replace(/\s+integrity=(".*?"|'.*?')/gi, '');
+      html = html.replace(/<meta[^>]*http-equiv=["']content-security-policy["'][^>]*>/gi, '');
+
+      if (!/<meta[^>]+charset=/i.test(html)) {
+        html = html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n    <meta charset="utf-8">`);
+      }
+
+      if (!/^\s*<!doctype/i.test(html)) {
+        html = `<!DOCTYPE html>\n${html}`;
+      }
+
+      zip.file(pageFileName, html);
+      downloadedPages.push({ url, title: pageData.title, fileName: pageFileName });
+      totalPages++;
+
+      // بستن تب اگر ایجاد شده بود
+      if (depth > 0) {
+        await chrome.tabs.remove(tab.id);
+      }
+
+    } catch (e) {
+      console.error('[PageDownloader] Error crawling page:', url, e);
+      if (depth > 0) {
+        try {
+          await chrome.tabs.remove(tab.id);
+        } catch (tabError) {
+          console.warn('[PageDownloader] Error closing tab:', tabError);
+        }
+      }
+    }
+  }
+
+  // بازنویسی CSSها
+  const cssMapping = new Map();
+  urlToLocalPath.forEach((localPath, origUrl) => {
+    if (localPath.startsWith('assets/')) {
+      cssMapping.set(origUrl, `../${localPath.replace('assets/', '')}`);
+    } else {
+      cssMapping.set(origUrl, localPath);
+    }
+  });
+  for (const [cssUrl, relPath] of urlToLocalPath.entries()) {
+    if (!cssTextCache.has(cssUrl)) continue;
+    const text = applyUrlReplacements(cssTextCache.get(cssUrl), cssMapping);
+    zip.file(relPath, text);
+  }
+
+  // ایجاد فایل index صفحه اصلی برای لینک‌دن صفحات
+  let indexHtml = '<!DOCTYPE html>\n<html lang="fa" dir="rtl">\n<head>\n';
+  indexHtml += '<meta charset="utf-8">\n';
+  indexHtml += '<title>Pages Index</title>\n';
+  indexHtml += '<style>body{font-family:Arial,sans-serif;max-width:800px;margin:50px auto;padding:20px;} ul{list-style:none;padding:0;} li{margin:10px 0;} a{color:#0066cc;text-decoration:none;} a:hover{text-decoration:underline;}</style>\n';
+  indexHtml += '</head>\n<body>\n';
+  indexHtml += '<h1>صفحات دانلود شده</h1>\n';
+  indexHtml += '<ul>\n';
+  downloadedPages.forEach(page => {
+    const relativePath = page.fileName.startsWith('pages/') ? page.fileName : page.fileName;
+    indexHtml += `<li><a href="${relativePath}">${page.title}</a> - ${page.url}</li>\n`;
+  });
+  indexHtml += '</ul>\n';
+  indexHtml += '</body>\n</html>';
+
+  zip.file('pages/index.html', indexHtml);
+
+  // فایل گزارش خطاها
+  if (skippedResources.length > 0) {
+    const report = skippedResources.join('\n');
+    zip.file('SKIPPED_RESOURCES.txt', `These resources could not be downloaded (CORS, network errors, etc.):\n\n${report}`);
+  }
+
+  // راهنما
+  zip.file(
+    'HOW-TO-OPEN.txt',
+    'برای باز کردن این صفحات با کمترین مشکل، پیشنهاد می‌شود به‌جای دابل-کلیک روی index.html،\n' +
+      'یک سرور محلی اجرا کنید:\n\n' +
+      '1) پایتون نصب دارید؟ داخل همین پوشه دستور زیر را اجرا کنید:\n' +
+      '   python3 -m http.server 8000\n' +
+      '   یا روی ویندوز: python -m http.server 8000\n' +
+      '   سپس در مرورگر بروید به: http://localhost:8000\n\n' +
+      'برای مشاهده index صفحات: http://localhost:8000/pages/index.html\n'
+  );
+
+  console.log('[PageDownloader] در حال فشرده‌سازی زیپ...');
+  const base64 = await zip.generateAsync({ type: 'base64' });
+  return { base64, title: 'crawled_pages' };
+}
+
+// فیلتر کردن لینک‌ها بر اساس تنظیمات
+function filterLinks(links, baseDomain, currentPageDomain) {
+  return links.filter(link => {
+    try {
+      const url = new URL(link);
+
+      // فیلتر دامنه
+      if (currentSettings.sameDomain && url.hostname !== baseDomain) {
+        return false;
+      }
+
+      // فیلتر لینک‌های داخلی/خارجی
+      if (currentSettings.followInternalLinks && url.hostname !== currentPageDomain) {
+        return false;
+      }
+
+      // فیلتر پروتکل‌های غیر HTTP
+      if (!/^https?:/.test(link)) {
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  });
 }
 
 // بارگذاری تنظیمات در startup
