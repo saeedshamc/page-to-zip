@@ -6,7 +6,11 @@ importScripts('libs/jszip.min.js');
 // ---------------------------------------------------------------------------
 function collectPageData() {
   const abs = (u) => {
-    try { return new URL(u, document.baseURI).href; } catch (e) { return null; }
+    try {
+      // اگر data URI یا blob URL است، نادیده بگیر
+      if (u.startsWith('data:') || u.startsWith('blob:')) return null;
+      return new URL(u, document.baseURI).href;
+    } catch (e) { return null; }
   };
 
   const resources = new Set();
@@ -95,7 +99,7 @@ function collectPageData() {
   };
 }
 
-// استخراج آدرس url(...) و @import از متن CSS
+// استخراج آدرس url(...) و @import و @font-face از متن CSS
 function extractCssUrls(cssText, cssBaseURI) {
   const urls = new Set();
   const urlRegex = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
@@ -112,6 +116,20 @@ function extractCssUrls(cssText, cssBaseURI) {
     try {
       urls.add(new URL(m[1], cssBaseURI).href);
     } catch (e) {}
+  }
+  // استخراج فونت‌ها از @font-face
+  const fontFaceRegex = /@font-face\s*{[^}]*src:\s*([^;]+);/g;
+  while ((m = fontFaceRegex.exec(cssText)) !== null) {
+    const srcValue = m[1];
+    const fontUrlRegex = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+    let fontMatch;
+    while ((fontMatch = fontUrlRegex.exec(srcValue)) !== null) {
+      const raw = fontMatch[2];
+      if (raw.startsWith('data:') || raw.startsWith('#')) continue;
+      try {
+        urls.add(new URL(raw, cssBaseURI).href);
+      } catch (e) {}
+    }
   }
   return Array.from(urls);
 }
