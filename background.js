@@ -204,6 +204,9 @@ async function buildZipForTab(tab) {
   const queue = [...pageData.resources];
   const seen = new Set(queue);
 
+  let totalResources = queue.length;
+  let downloadedCount = 0;
+
   while (queue.length) {
     const url = queue.shift();
     if (urlToLocalPath.has(url)) continue;
@@ -214,6 +217,13 @@ async function buildZipForTab(tab) {
       const relPath = `${folder}/${fileName}`;
       zip.file(relPath, buf);
       urlToLocalPath.set(url, relPath);
+      downloadedCount++;
+
+      // آپدیت نشانگر پیشرفت
+      if (downloadedCount % 5 === 0 || queue.length === 0) {
+        const progress = Math.round((downloadedCount / totalResources) * 100);
+        setBadge(`${progress}%`, '#6b7280');
+      }
 
       // اگر فایل CSS بود، داخلش را هم برای url()های تو در تو (فونت، بک‌گراند) بگرد
       if (folder === 'assets/css' || contentType.includes('css')) {
@@ -224,6 +234,7 @@ async function buildZipForTab(tab) {
           if (!seen.has(nUrl)) {
             seen.add(nUrl);
             queue.push(nUrl);
+            totalResources++;
           }
         });
       }
@@ -335,7 +346,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     return;
   }
 
-  setBadge('…', '#6b7280');
+  setBadge('0%', '#6b7280');
   try {
     const { base64, title } = await buildZipForTab(tab);
     const filename = `${sanitizeZipName(title)}.zip`;
