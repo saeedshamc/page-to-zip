@@ -197,6 +197,20 @@ async function fetchAsArrayBuffer(url) {
   return { buf, contentType };
 }
 
+// تابعی برای تلاش مجدد در صورت خطای شبکه
+async function fetchWithRetry(url, maxRetries = 2) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fetchAsArrayBuffer(url);
+    } catch (e) {
+      if (i === maxRetries - 1) throw e;
+      // تاخیر قبل از تلاش مجدد
+      await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -234,7 +248,7 @@ async function buildZipForTab(tab) {
     const url = queue.shift();
     if (urlToLocalPath.has(url)) continue;
     try {
-      const { buf, contentType } = await fetchAsArrayBuffer(url);
+      const { buf, contentType } = await fetchWithRetry(url);
       const folder = guessFolder(url, contentType);
       const fileName = safeFileName(url, usedNames);
       const relPath = `${folder}/${fileName}`;
