@@ -164,11 +164,17 @@ function guessFolder(url, contentType) {
   if (['js', 'mjs'].includes(ext)) return 'assets/js';
   if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp', 'avif'].includes(ext)) return 'assets/img';
   if (['woff', 'woff2', 'ttf', 'otf', 'eot'].includes(ext)) return 'assets/fonts';
+  if (['mp4', 'webm', 'ogg', 'mov'].includes(ext)) return 'assets/video';
+  if (['mp3', 'wav', 'ogg', 'aac'].includes(ext)) return 'assets/audio';
+  if (['json', 'xml', 'webmanifest'].includes(ext)) return 'assets/data';
   if (contentType) {
     if (contentType.includes('css')) return 'assets/css';
     if (contentType.includes('javascript')) return 'assets/js';
     if (contentType.includes('image')) return 'assets/img';
     if (contentType.includes('font')) return 'assets/fonts';
+    if (contentType.includes('video')) return 'assets/video';
+    if (contentType.includes('audio')) return 'assets/audio';
+    if (contentType.includes('json') || contentType.includes('xml')) return 'assets/data';
   }
   return 'assets/misc';
 }
