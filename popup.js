@@ -53,27 +53,42 @@ function isDownloadableUrl(url) {
 async function startDownload() {
   const downloadBtn = document.getElementById('downloadBtn');
   const settings = await loadSettings();
-  
+
   // اعتبارسنجی تنظیمات
   if (settings.maxFileSize < 1 || settings.maxFileSize > 500) {
     showStatus('حجم فایل باید بین 1 تا 500 مگابایت باشد', 'error');
     return;
   }
-  
+
+  if (settings.crawlDepth < 1 || settings.crawlDepth > 5) {
+    showStatus('عمق خزش باید بین 1 تا 5 باشد', 'error');
+    return;
+  }
+
+  if (settings.maxPages < 1 || settings.maxPages > 100) {
+    showStatus('تعداد صفحات باید بین 1 تا 100 باشد', 'error');
+    return;
+  }
+
   // ذخیره تنظیمات
   await saveSettings(settings);
-  
+
   const tab = await getCurrentTab();
-  
+
   if (!tab || !isDownloadableUrl(tab.url)) {
     showStatus('این صفحه قابل دانلود نیست', 'error');
     return;
   }
-  
+
   downloadBtn.disabled = true;
   downloadBtn.textContent = 'در حال دانلود...';
-  showStatus('در حال آماده‌سازی دانلود...', 'info');
-  
+
+  if (settings.enableCrawling) {
+    showStatus(`در حال خزش ${settings.maxPages} صفحه با عمق ${settings.crawlDepth}...`, 'info');
+  } else {
+    showStatus('در حال آماده‌سازی دانلود...', 'info');
+  }
+
   try {
     // ارسال پیام به background script
     await chrome.runtime.sendMessage({
@@ -81,7 +96,7 @@ async function startDownload() {
       tabId: tab.id,
       settings: settings
     });
-    
+
     showStatus('دانلود شروع شد', 'success');
   } catch (error) {
     showStatus(`خطا: ${error.message}`, 'error');
