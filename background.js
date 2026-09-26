@@ -217,15 +217,15 @@ async function buildZipForTab(tab) {
   }
 
   // بازنویسی متن CSSها با مسیرهای لوکال
-  // CSS در assets/css/ است و باید به assets/ برود
+  // CSS در assets/css/ است و باید به سایر پوشه‌های assets/ رفرنس بدهد
   const cssMapping = new Map();
   urlToLocalPath.forEach((localPath, origUrl) => {
-    // اگر فایل در assets/css/ است، مسیر نسبی به ../folder/file
-    // اگر فایل در پوشه دیگری است، مسیر نسبی محاسبه می‌شود
-    if (localPath.startsWith('assets/css/')) {
-      cssMapping.set(origUrl, `../${localPath.replace('assets/css/', '')}`);
+    // مسیر نسبی از assets/css/ به سایر پوشه‌ها
+    if (localPath.startsWith('assets/')) {
+      const relativeFromCss = localPath.replace('assets/', '../');
+      cssMapping.set(origUrl, relativeFromCss);
     } else {
-      cssMapping.set(origUrl, `../${localPath}`);
+      cssMapping.set(origUrl, localPath);
     }
   });
   for (const [cssUrl, relPath] of urlToLocalPath.entries()) {
@@ -331,6 +331,13 @@ chrome.action.onClicked.addListener(async (tab) => {
   } catch (e) {
     console.error('[PageDownloader] خطا در ساخت فایل ZIP:', e);
     setBadge('ERR', '#e11d48');
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: 'خطا در دانلود صفحه',
+      message: `خطا در ساخت فایل ZIP: ${e.message}`,
+      priority: 2
+    });
   } finally {
     setTimeout(() => setBadge(''), 4000);
   }
