@@ -80,6 +80,18 @@ function collectPageData() {
     if (u) resources.add(u);
   });
 
+  // Open Graph و Twitter Card meta tags برای تصاویر
+  document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]').forEach((el) => {
+    const u = abs(el.getAttribute('content'));
+    if (u) resources.add(u);
+  });
+
+  // Manifest
+  document.querySelectorAll('link[rel="manifest"]').forEach((el) => {
+    const u = abs(el.getAttribute('href'));
+    if (u) resources.add(u);
+  });
+
   // بک‌گراندهای اینلاین (style="background-image:url(...)")
   document.querySelectorAll('[style]').forEach((el) => {
     const style = el.getAttribute('style') || '';
