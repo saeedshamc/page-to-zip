@@ -80,6 +80,17 @@ function collectPageData() {
     if (u) resources.add(u);
   });
 
+  // Picture element support
+  document.querySelectorAll('picture source[srcset]').forEach((el) => {
+    const srcset = el.getAttribute('srcset');
+    if (!srcset) return;
+    srcset.split(',').forEach((part) => {
+      const url = part.trim().split(/\s+/)[0];
+      const u = abs(url);
+      if (u) resources.add(u);
+    });
+  });
+
   // Open Graph و Twitter Card meta tags برای تصاویر
   document.querySelectorAll('meta[property="og:image"], meta[name="twitter:image"]').forEach((el) => {
     const u = abs(el.getAttribute('content'));
