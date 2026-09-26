@@ -114,6 +114,32 @@ function collectPageData() {
     });
   });
 
+  // پشتیبانی بهتر از SPA - استخراج منابع از style tags و script contents
+  document.querySelectorAll('style').forEach((el) => {
+    const styleContent = el.textContent || '';
+    const matches = styleContent.match(/url\((['"]?)([^'")]+)\1\)/g) || [];
+    matches.forEach((m) => {
+      const inner = m.replace(/^url\((['"]?)/, '').replace(/\1?\)$/, '').replace(/['"]/g, '');
+      const u = abs(inner);
+      if (u) resources.add(u);
+    });
+  });
+
+  // استخراج منابع از inline script tags (برای SPA)
+  document.querySelectorAll('script:not([src])').forEach((el) => {
+    const scriptContent = el.textContent || '';
+    // استخراج URLها از string literals در JavaScript
+    const urlPattern = /['"`](https?:[^'"`]+[^'"`])['"`]/g;
+    let match;
+    while ((match = urlPattern.exec(scriptContent)) !== null) {
+      const url = match[1];
+      if (url.match(/\.(png|jpg|jpeg|gif|webp|svg|css|js|woff|woff2|ttf|otf)$/i)) {
+        const u = abs(url);
+        if (u) resources.add(u);
+      }
+    }
+  });
+
   return {
     html: document.documentElement.outerHTML,
     baseURI: document.baseURI,
@@ -154,6 +180,20 @@ function extractCssUrls(cssText, cssBaseURI) {
       } catch (e) {}
     }
   }
+  // استخراج از background-image و background
+  const bgRegex = /background(?:-image)?:\s*([^;]+)/g;
+  while ((m = bgRegex.exec(cssText)) !== null) {
+    const bgValue = m[1];
+    const bgUrlRegex = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
+    let bgMatch;
+    while ((bgMatch = bgUrlRegex.exec(bgValue)) !== null) {
+      const raw = bgMatch[2];
+      if (raw.startsWith('data:') || raw.startsWith('#')) continue;
+      try {
+        urls.add(new URL(raw, cssBaseURI).href);
+      } catch (e) {}
+    }
+  }
   return Array.from(urls);
 }
 
@@ -162,11 +202,12 @@ function guessFolder(url, contentType) {
   const ext = (path.split('.').pop() || '').toLowerCase();
   if (['css'].includes(ext)) return 'assets/css';
   if (['js', 'mjs'].includes(ext)) return 'assets/js';
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp', 'avif'].includes(ext)) return 'assets/img';
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp', 'avif', 'tiff', 'pjp', 'pjpeg'].includes(ext)) return 'assets/img';
   if (['woff', 'woff2', 'ttf', 'otf', 'eot'].includes(ext)) return 'assets/fonts';
-  if (['mp4', 'webm', 'ogg', 'mov'].includes(ext)) return 'assets/video';
-  if (['mp3', 'wav', 'ogg', 'aac'].includes(ext)) return 'assets/audio';
+  if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv', 'wmv'].includes(ext)) return 'assets/video';
+  if (['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a', 'wma'].includes(ext)) return 'assets/audio';
   if (['json', 'xml', 'webmanifest'].includes(ext)) return 'assets/data';
+  if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) return 'assets/docs';
   if (contentType) {
     if (contentType.includes('css')) return 'assets/css';
     if (contentType.includes('javascript')) return 'assets/js';
@@ -175,6 +216,7 @@ function guessFolder(url, contentType) {
     if (contentType.includes('video')) return 'assets/video';
     if (contentType.includes('audio')) return 'assets/audio';
     if (contentType.includes('json') || contentType.includes('xml')) return 'assets/data';
+    if (contentType.includes('pdf') || contentType.includes('document') || contentType.includes('spreadsheet') || contentType.includes('presentation')) return 'assets/docs';
   }
   return 'assets/misc';
 }
@@ -195,11 +237,25 @@ function safeFileName(url, usedNames) {
   return finalName;
 }
 
+// محدودیت حجم فایل‌ها (برای جلوگیری از دانلود فایل‌های خیلی بزرگ)
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
 async function fetchAsArrayBuffer(url) {
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const contentLength = res.headers.get('content-length');
+  if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
+    throw new Error(`File too large (${(parseInt(contentLength) / 1024 / 1024).toFixed(2)}MB > ${MAX_FILE_SIZE / 1024 / 1024}MB limit)`);
+  }
+
   const contentType = res.headers.get('content-type') || '';
   const buf = await res.arrayBuffer();
+
+  if (buf.byteLength > MAX_FILE_SIZE) {
+    throw new Error(`File too large (${(buf.byteLength / 1024 / 1024).toFixed(2)}MB > ${MAX_FILE_SIZE / 1024 / 1024}MB limit)`);
+  }
+
   return { buf, contentType };
 }
 
