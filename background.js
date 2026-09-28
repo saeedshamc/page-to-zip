@@ -307,6 +307,9 @@ function safeFileName(url, usedNames) {
 // محدودیت حجم فایل‌ها (برای جلوگیری از دانلود فایل‌های خیلی بزرگ)
 let MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
+// مپ منابع مشترک برای جلوگیری از دانلود دوباره
+const sharedResources = new Map(); // url -> { buf, contentType, refCount }
+
 // تنظیمات فعلی
 let currentSettings = {
   includeImages: true,
@@ -354,15 +357,29 @@ async function fetchAsArrayBuffer(url) {
   return { buf, contentType };
 }
 
-// تابعی برای تلاش مجدد در صورت خطای شبکه
-async function fetchWithRetry(url, maxRetries = 2) {
+// تابعی برای تلاش مجدد هوشمند در صورت خطای شبکه
+async function fetchWithRetry(url, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fetchAsArrayBuffer(url);
     } catch (e) {
       if (i === maxRetries - 1) throw e;
-      // تاخیر قبل از تلاش مجدد
-      await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+
+      // استراتژی‌های مختلف retry بر اساس نوع خطا
+      const errorMessage = e.message.toLowerCase();
+
+      // خطاهای شبکه موقت - تاخیر کوتاه
+      if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+      // خطاهای سرور - تاخیر طولانی‌تر
+      else if (errorMessage.includes('503') || errorMessage.includes('502') || errorMessage.includes('504')) {
+        await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+      }
+      // خطاهای دیگر - تاخیر استاندارد
+      else {
+        await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+      }
     }
   }
   throw new Error('Max retries exceeded');
