@@ -368,6 +368,39 @@ async function fetchWithRetry(url, maxRetries = 2) {
   throw new Error('Max retries exceeded');
 }
 
+// دانلود موازی با کنترل همزمانی
+async function downloadWithConcurrency(urls, maxConcurrency = 6, onProgress) {
+  const results = new Map();
+  const errors = new Map();
+  let completed = 0;
+  let index = 0;
+
+  const processUrl = async (url) => {
+    try {
+      const result = await fetchWithRetry(url);
+      results.set(url, result);
+    } catch (error) {
+      errors.set(url, error);
+    } finally {
+      completed++;
+      if (onProgress) onProgress(completed, urls.length);
+    }
+  };
+
+  const workers = [];
+  for (let i = 0; i < maxConcurrency; i++) {
+    workers.push((async () => {
+      while (index < urls.length) {
+        const url = urls[index++];
+        await processUrl(url);
+      }
+    })());
+  }
+
+  await Promise.all(workers);
+  return { results, errors };
+}
+
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -425,7 +458,7 @@ async function buildZipForTab(tab) {
       // آپدیت نشانگر پیشرفت
       if (downloadedCount % 5 === 0 || queue.length === 0) {
         const progress = Math.round((downloadedCount / totalResources) * 100);
-        setBadge(`${progress}%`, '#6b7280');
+        setBadge(`${progress}%`, '#6b7280`);
       }
 
       // اگر فایل CSS بود، داخلش را هم برای url()های تو در تو (فونت، بک‌گراند) بگرد
@@ -553,7 +586,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     handleDownload(request.tabId, request.settings);
     return true;
   }
+  if (request.action === 'getProgress') {
+    sendResponse({ data: currentProgress });
+    return true;
+  }
 });
+
+// وضعیت پیشرفت فعلی
+let currentProgress = {
+  progress: 0,
+  pagesDownloaded: 0,
+  resourcesDownloaded: 0,
+  status: 'آماده',
+  statusType: 'downloading',
+  currentPage: null
+};
+
+// ارسال آپدیت پیشرفت به popup
+function sendProgressUpdate() {
+  chrome.runtime.sendMessage({
+    action: 'updateProgress',
+    data: currentProgress
+  }).catch(() => {
+    // Popup بسته شده است، نادیده بگیر
+  });
+}
 
 // تابع هندل کردن دانلود
 async function handleDownload(tabId, settings = null) {
