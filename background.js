@@ -358,7 +358,8 @@ let currentSettings = {
   followInternalLinks: true,
   sameDomain: true,
   concurrentDownloads: 6,
-  exportFormat: 'zip'
+  exportFormat: 'zip',
+  imageQuality: 'high'
 };
 
 // بارگذاری تنظیمات
@@ -401,6 +402,37 @@ async function getCookiesForDomain(domain) {
   } catch (e) {
     console.warn('[PageDownloader] Failed to get cookies:', e);
     return [];
+  }
+}
+
+// بهینه‌سازی تصاویر بر اساس کیفیت
+async function optimizeImage(buf, contentType, quality) {
+  if (!contentType.includes('image/') || quality === 'high') {
+    return buf;
+  }
+
+  try {
+    // استفاده از OffscreenCanvas برای فشرده‌سازی تصاویر
+    const bitmap = await createImageBitmap(new Blob([buf]));
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0);
+
+    let jpegQuality = 0.9;
+    if (quality === 'medium') jpegQuality = 0.7;
+    if (quality === 'low') jpegQuality = 0.5;
+
+    const blob = await canvas.convertToBlob({
+      type: 'image/jpeg',
+      quality: jpegQuality
+    });
+
+    const optimizedBuf = await blob.arrayBuffer();
+    console.log('[PageDownloader] Image optimized:', buf.byteLength, '->', optimizedBuf.byteLength, 'bytes');
+    return optimizedBuf;
+  } catch (e) {
+    console.warn('[PageDownloader] Image optimization failed:', e);
+    return buf;
   }
 }
 
@@ -562,13 +594,19 @@ async function buildZipForTab(tab) {
         continue;
       }
 
+      // بهینه‌سازی تصاویر
+      let optimizedBuf = buf;
+      if (folder === 'assets/img' && contentType.includes('image/')) {
+        optimizedBuf = await optimizeImage(buf, contentType, currentSettings.imageQuality);
+      }
+
       const fileName = safeFileName(url, usedNames);
       const relPath = `${folder}/${fileName}`;
-      zip.file(relPath, buf);
+      zip.file(relPath, optimizedBuf);
       urlToLocalPath.set(url, relPath);
 
       // ذخیره در منابع مشترک
-      sharedResources.set(url, { buf, contentType, refCount: 1 });
+      sharedResources.set(url, { buf: optimizedBuf, contentType, refCount: 1 });
 
       downloadedCount++;
 
@@ -910,13 +948,19 @@ async function crawlAndDownload(startTab) {
             continue;
           }
 
+          // بهینه‌سازی تصاویر
+          let optimizedBuf = buf;
+          if (folder === 'assets/img' && contentType.includes('image/')) {
+            optimizedBuf = await optimizeImage(buf, contentType, currentSettings.imageQuality);
+          }
+
           const fileName = safeFileName(resourceUrl, usedNames);
           const relPath = `${folder}/${fileName}`;
-          zip.file(relPath, buf);
+          zip.file(relPath, optimizedBuf);
           urlToLocalPath.set(resourceUrl, relPath);
 
           // ذخیره در منابع مشترک
-          sharedResources.set(resourceUrl, { buf, contentType, refCount: 1 });
+          sharedResources.set(resourceUrl, { buf: optimizedBuf, contentType, refCount: 1 });
 
           downloadedCount++;
 

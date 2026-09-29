@@ -12,7 +12,8 @@ const defaultSettings = {
   followInternalLinks: true,
   sameDomain: true,
   concurrentDownloads: 6,
-  exportFormat: 'zip'
+  exportFormat: 'zip',
+  imageQuality: 'high'
 };
 
 // بارگذاری تنظیمات از chrome.storage
@@ -125,13 +126,14 @@ async function init() {
   document.getElementById('sameDomain').checked = settings.sameDomain;
   document.getElementById('concurrentDownloads').value = settings.concurrentDownloads;
   document.getElementById('exportFormat').value = settings.exportFormat || 'zip';
+  document.getElementById('imageQuality').value = settings.imageQuality || 'high';
 
   // اضافه کردن event listeners
   document.getElementById('downloadBtn').addEventListener('click', startDownload);
   document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
 
   // ذخیره تنظیمات هنگام تغییر
-  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads'];
+  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('change', async () => {
       const newSettings = {
@@ -147,7 +149,8 @@ async function init() {
         followInternalLinks: document.getElementById('followInternalLinks').checked,
         sameDomain: document.getElementById('sameDomain').checked,
         concurrentDownloads: parseInt(document.getElementById('concurrentDownloads').value),
-        exportFormat: document.getElementById('exportFormat').value
+        exportFormat: document.getElementById('exportFormat').value,
+        imageQuality: document.getElementById('imageQuality').value
       };
       await saveSettings(newSettings);
     });
