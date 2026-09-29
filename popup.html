@@ -98,6 +98,47 @@
       color: #991b1b;
       display: block;
     }
+    .history-list {
+      max-height: 150px;
+      overflow-y: auto;
+      margin: 10px 0;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .history-item {
+      padding: 8px;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .history-item:hover {
+      background: #f9fafb;
+    }
+    .history-item:last-child {
+      border-bottom: none;
+    }
+    .history-title {
+      font-weight: bold;
+      color: #374151;
+    }
+    .history-date {
+      color: #6b7280;
+      font-size: 11px;
+    }
+    .history-empty {
+      text-align: center;
+      color: #9ca3af;
+      padding: 20px;
+    }
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+      margin-top: 10px;
+    }
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
     .status.info {
       background: #dbeafe;
       color: #1e40af;
@@ -167,7 +208,17 @@
       <label for="sameDomain">فقط همان دامنه</label>
       <input type="checkbox" id="sameDomain" checked>
     </div>
-    
+
+    <div class="separator"></div>
+
+    <h3>تاریخچه دانلود</h3>
+
+    <div id="historyList" class="history-list">
+      <div class="history-empty">تاریخچه خالی است</div>
+    </div>
+
+    <button id="clearHistoryBtn" class="btn btn-secondary">پاک کردن تاریخچه</button>
+
     <button id="downloadBtn" class="btn btn-download">دانلود صفحه</button>
     
     <div id="status" class="status"></div>

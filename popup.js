@@ -124,6 +124,7 @@ async function init() {
 
   // اضافه کردن event listeners
   document.getElementById('downloadBtn').addEventListener('click', startDownload);
+  document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
 
   // ذخیره تنظیمات هنگام تغییر
   const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain'];
@@ -145,6 +146,51 @@ async function init() {
       await saveSettings(newSettings);
     });
   });
+
+  // بارگذاری تاریخچه
+  loadHistory();
+}
+
+// بارگذاری تاریخچه دانلود
+async function loadHistory() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getHistory' });
+    const history = response.history || [];
+    renderHistory(history);
+  } catch (e) {
+    console.error('Failed to load history:', e);
+  }
+}
+
+// نمایش تاریخچه
+function renderHistory(history) {
+  const historyList = document.getElementById('historyList');
+
+  if (history.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">تاریخچه خالی است</div>';
+    return;
+  }
+
+  historyList.innerHTML = history.map(item => {
+    const date = new Date(item.timestamp).toLocaleString('fa-IR');
+    return `
+      <div class="history-item">
+        <div class="history-title">${item.title}</div>
+        <div class="history-date">${date}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// پاک کردن تاریخچه
+async function clearHistory() {
+  try {
+    await chrome.runtime.sendMessage({ action: 'clearHistory' });
+    document.getElementById('historyList').innerHTML = '<div class="history-empty">تاریخچه خالی است</div>';
+    showStatus('تاریخچه پاک شد', 'success');
+  } catch (e) {
+    showStatus('خطا در پاک کردن تاریخچه', 'error');
+  }
 }
 
 // شروع

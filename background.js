@@ -310,6 +310,40 @@ let MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 // مپ منابع مشترک برای جلوگیری از دانلود دوباره
 const sharedResources = new Map(); // url -> { buf, contentType, refCount }
 
+// پاکسازی منابع مشترک بعد از هر دانلود
+function clearSharedResources() {
+  sharedResources.clear();
+}
+
+// ذخیره تاریخچه دانلود
+async function saveDownloadHistory(entry) {
+  try {
+    const result = await chrome.storage.local.get('downloadHistory');
+    const history = result.downloadHistory || [];
+    history.unshift(entry); // جدیدترین در ابتدا
+
+    // نگه داشتن فقط 50 آخرین
+    if (history.length > 50) {
+      history.pop();
+    }
+
+    await chrome.storage.local.set({ downloadHistory: history });
+  } catch (e) {
+    console.warn('[PageDownloader] Failed to save download history:', e);
+  }
+}
+
+// دریافت تاریخچه دانلود
+async function getDownloadHistory() {
+  try {
+    const result = await chrome.storage.local.get('downloadHistory');
+    return result.downloadHistory || [];
+  } catch (e) {
+    console.warn('[PageDownloader] Failed to get download history:', e);
+    return [];
+  }
+}
+
 // تنظیمات فعلی
 let currentSettings = {
   includeImages: true,
@@ -607,6 +641,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ data: currentProgress });
     return true;
   }
+  if (request.action === 'getHistory') {
+    getDownloadHistory().then(history => sendResponse({ history }));
+    return true;
+  }
+  if (request.action === 'clearHistory') {
+    chrome.storage.local.remove('downloadHistory');
+    sendResponse({ success: true });
+    return true;
+  }
 });
 
 // وضعیت پیشرفت فعلی
@@ -666,6 +709,15 @@ async function handleDownload(tabId, settings = null) {
     const downloadId = await chrome.downloads.download({ url: dataUrl, filename, saveAs: true });
     console.log('[PageDownloader] دانلود ثبت شد، شناسه:', downloadId);
 
+    // ذخیره در تاریخچه
+    await saveDownloadHistory({
+      url: tab.url,
+      title: title,
+      filename: filename,
+      timestamp: Date.now(),
+      settings: currentSettings
+    });
+
     setBadge('OK', '#16a34a');
   } catch (e) {
     console.error('[PageDownloader] خطا در ساخت فایل ZIP:', e);
@@ -678,6 +730,8 @@ async function handleDownload(tabId, settings = null) {
       priority: 2
     });
   } finally {
+    // پاکسازی منابع مشترک
+    clearSharedResources();
     setTimeout(() => setBadge(''), 4000);
   }
 }
