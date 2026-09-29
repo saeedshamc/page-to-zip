@@ -798,7 +798,7 @@ async function crawlAndDownload(startTab) {
         }
       });
 
-      // پردازش منابع صفحه
+      // پردازش منابع صفحه با deduplication
       const resources = pageData.resources;
       const queue = [...resources];
       const seen = new Set(queue);
@@ -808,6 +808,24 @@ async function crawlAndDownload(startTab) {
       while (queue.length) {
         const resourceUrl = queue.shift();
         if (urlToLocalPath.has(resourceUrl)) continue;
+
+        // بررسی منابع مشترک برای جلوگیری از دانلود دوباره
+        if (sharedResources.has(resourceUrl)) {
+          const shared = sharedResources.get(resourceUrl);
+          const folder = guessFolder(resourceUrl, shared.contentType);
+          const fileName = safeFileName(resourceUrl, usedNames);
+          const relPath = `${folder}/${fileName}`;
+
+          if (!urlToLocalPath.has(resourceUrl)) {
+            zip.file(relPath, shared.buf);
+            urlToLocalPath.set(resourceUrl, relPath);
+          }
+          downloadedCount++;
+          shared.refCount++;
+          console.log('[PageDownloader] Using shared resource:', resourceUrl, 'RefCount:', shared.refCount);
+          continue;
+        }
+
         try {
           const { buf, contentType } = await fetchWithRetry(resourceUrl);
           const folder = guessFolder(resourceUrl, contentType);
@@ -822,11 +840,15 @@ async function crawlAndDownload(startTab) {
           const relPath = `${folder}/${fileName}`;
           zip.file(relPath, buf);
           urlToLocalPath.set(resourceUrl, relPath);
+
+          // ذخیره در منابع مشترک
+          sharedResources.set(resourceUrl, { buf, contentType, refCount: 1 });
+
           downloadedCount++;
 
           if (downloadedCount % 5 === 0 || queue.length === 0) {
             const progress = Math.round((downloadedCount / totalResources) * 100);
-            setBadge(`${progress}%`, '#6b7280');
+            setBadge(`${progress}%`, '#6b7280`);
           }
 
           if (folder === 'assets/css' || contentType.includes('css')) {
