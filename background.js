@@ -356,7 +356,8 @@ let currentSettings = {
   crawlDepth: 1,
   maxPages: 10,
   followInternalLinks: true,
-  sameDomain: true
+  sameDomain: true,
+  concurrentDownloads: 6
 };
 
 // بارگذاری تنظیمات
