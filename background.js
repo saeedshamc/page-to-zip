@@ -392,6 +392,17 @@ async function fetchAsArrayBuffer(url) {
   return { buf, contentType };
 }
 
+// دریافت cookies برای دامنه‌های احراز هویت شده
+async function getCookiesForDomain(domain) {
+  try {
+    const cookies = await chrome.cookies.getAll({ domain });
+    return cookies;
+  } catch (e) {
+    console.warn('[PageDownloader] Failed to get cookies:', e);
+    return [];
+  }
+}
+
 // تابعی برای تلاش مجدد هوشمند در صورت خطای شبکه
 async function fetchWithRetry(url, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
@@ -715,6 +726,11 @@ async function handleDownload(tabId, settings = null) {
       await loadSettings();
     }
 
+    // دریافت cookies برای دامنه
+    const domain = new URL(tab.url).hostname;
+    const cookies = await getCookiesForDomain(domain);
+    console.log('[PageDownloader] Retrieved cookies for domain:', domain, 'Count:', cookies.length);
+
     setBadge('0%', '#6b7280');
 
     let zipData;
@@ -738,7 +754,8 @@ async function handleDownload(tabId, settings = null) {
       title: title,
       filename: filename,
       timestamp: Date.now(),
-      settings: currentSettings
+      settings: currentSettings,
+      cookiesCount: cookies.length
     });
 
     setBadge('OK', '#16a34a');
