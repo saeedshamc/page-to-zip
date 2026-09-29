@@ -10,7 +10,8 @@ const defaultSettings = {
   crawlDepth: 1,
   maxPages: 10,
   followInternalLinks: true,
-  sameDomain: true
+  sameDomain: true,
+  concurrentDownloads: 6
 };
 
 // بارگذاری تنظیمات از chrome.storage
@@ -121,13 +122,14 @@ async function init() {
   document.getElementById('maxPages').value = settings.maxPages;
   document.getElementById('followInternalLinks').checked = settings.followInternalLinks;
   document.getElementById('sameDomain').checked = settings.sameDomain;
+  document.getElementById('concurrentDownloads').value = settings.concurrentDownloads;
 
   // اضافه کردن event listeners
   document.getElementById('downloadBtn').addEventListener('click', startDownload);
   document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
 
   // ذخیره تنظیمات هنگام تغییر
-  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain'];
+  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('change', async () => {
       const newSettings = {
@@ -141,7 +143,8 @@ async function init() {
         crawlDepth: parseInt(document.getElementById('crawlDepth').value),
         maxPages: parseInt(document.getElementById('maxPages').value),
         followInternalLinks: document.getElementById('followInternalLinks').checked,
-        sameDomain: document.getElementById('sameDomain').checked
+        sameDomain: document.getElementById('sameDomain').checked,
+        concurrentDownloads: parseInt(document.getElementById('concurrentDownloads').value)
       };
       await saveSettings(newSettings);
     });
