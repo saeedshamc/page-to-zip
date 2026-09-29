@@ -11,7 +11,8 @@ const defaultSettings = {
   maxPages: 10,
   followInternalLinks: true,
   sameDomain: true,
-  concurrentDownloads: 6
+  concurrentDownloads: 6,
+  exportFormat: 'zip'
 };
 
 // بارگذاری تنظیمات از chrome.storage
@@ -123,6 +124,7 @@ async function init() {
   document.getElementById('followInternalLinks').checked = settings.followInternalLinks;
   document.getElementById('sameDomain').checked = settings.sameDomain;
   document.getElementById('concurrentDownloads').value = settings.concurrentDownloads;
+  document.getElementById('exportFormat').value = settings.exportFormat || 'zip';
 
   // اضافه کردن event listeners
   document.getElementById('downloadBtn').addEventListener('click', startDownload);
@@ -144,7 +146,8 @@ async function init() {
         maxPages: parseInt(document.getElementById('maxPages').value),
         followInternalLinks: document.getElementById('followInternalLinks').checked,
         sameDomain: document.getElementById('sameDomain').checked,
-        concurrentDownloads: parseInt(document.getElementById('concurrentDownloads').value)
+        concurrentDownloads: parseInt(document.getElementById('concurrentDownloads').value),
+        exportFormat: document.getElementById('exportFormat').value
       };
       await saveSettings(newSettings);
     });
