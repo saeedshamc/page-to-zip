@@ -357,7 +357,8 @@ let currentSettings = {
   maxPages: 10,
   followInternalLinks: true,
   sameDomain: true,
-  concurrentDownloads: 6
+  concurrentDownloads: 6,
+  exportFormat: 'zip'
 };
 
 // بارگذاری تنظیمات
@@ -400,6 +401,37 @@ async function getCookiesForDomain(domain) {
   } catch (e) {
     console.warn('[PageDownloader] Failed to get cookies:', e);
     return [];
+  }
+}
+
+// ساخت فایل MHTML (ساده - فشردن همه چیز در یک فایل HTML)
+async function buildMHTML(tab) {
+  try {
+    const [{ result: pageData }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: collectPageData,
+    });
+
+    // ساده‌سازی: همه منابع را در data URI تبدیل کن
+    let html = pageData.html;
+
+    // جایگزینی همه منابع با data URIs
+    for (const url of pageData.resources) {
+      try {
+        const { buf, contentType } = await fetchWithRetry(url);
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+        const dataUri = `data:${contentType};base64,${base64}`;
+        html = html.replace(new RegExp(escapeRegExp(url), 'g'), dataUri);
+      } catch (e) {
+        console.warn('[PageDownloader] Failed to convert to data URI:', url, e);
+      }
+    }
+
+    const base64 = btoa(html);
+    return { base64, title: pageData.title || 'page' };
+  } catch (e) {
+    console.error('[PageDownloader] Failed to build MHTML:', e);
+    throw new Error('MHTML construction failed: ' + e.message);
   }
 }
 
@@ -734,15 +766,17 @@ async function handleDownload(tabId, settings = null) {
     setBadge('0%', '#6b7280');
 
     let zipData;
-    if (currentSettings.enableCrawling) {
+    if (currentSettings.exportFormat === 'mhtml') {
+      zipData = await buildMHTML(tab);
+    } else if (currentSettings.enableCrawling) {
       zipData = await crawlAndDownload(tab);
     } else {
       zipData = await buildZipForTab(tab);
     }
 
     const { base64, title } = zipData;
-    const filename = `${sanitizeZipName(title)}.zip`;
-    const dataUrl = `data:application/zip;base64,${base64}`;
+    const filename = currentSettings.exportFormat === 'mhtml' ? `${sanitizeZipName(title)}.mhtml` : `${sanitizeZipName(title)}.zip`;
+    const dataUrl = currentSettings.exportFormat === 'mhtml' ? `data:application/x-mimearchive;base64,${base64}` : `data:application/zip;base64,${base64}`;
 
     console.log('[PageDownloader] شروع دانلود:', filename, 'حجم base64:', base64.length);
     const downloadId = await chrome.downloads.download({ url: dataUrl, filename, saveAs: true });
