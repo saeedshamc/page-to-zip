@@ -489,6 +489,24 @@ async function buildZipForTab(tab) {
   while (queue.length) {
     const url = queue.shift();
     if (urlToLocalPath.has(url)) continue;
+
+    // بررسی منابع مشترک برای جلوگیری از دانلود دوباره
+    if (sharedResources.has(url)) {
+      const shared = sharedResources.get(url);
+      const folder = guessFolder(url, shared.contentType);
+      const fileName = safeFileName(url, usedNames);
+      const relPath = `${folder}/${fileName}`;
+
+      if (!urlToLocalPath.has(url)) {
+        zip.file(relPath, shared.buf);
+        urlToLocalPath.set(url, relPath);
+      }
+      downloadedCount++;
+      shared.refCount++;
+      console.log('[PageDownloader] Using shared resource:', url, 'RefCount:', shared.refCount);
+      continue;
+    }
+
     try {
       const { buf, contentType } = await fetchWithRetry(url);
       const folder = guessFolder(url, contentType);
@@ -504,12 +522,16 @@ async function buildZipForTab(tab) {
       const relPath = `${folder}/${fileName}`;
       zip.file(relPath, buf);
       urlToLocalPath.set(url, relPath);
+
+      // ذخیره در منابع مشترک
+      sharedResources.set(url, { buf, contentType, refCount: 1 });
+
       downloadedCount++;
 
       // آپدیت نشانگر پیشرفت
       if (downloadedCount % 5 === 0 || queue.length === 0) {
         const progress = Math.round((downloadedCount / totalResources) * 100);
-        setBadge(`${progress}%`, '#6b7280`);
+        setBadge(`${progress}%`, '#6b7280');
       }
 
       // اگر فایل CSS بود، داخلش را هم برای url()های تو در تو (فونت، بک‌گراند) بگرد
