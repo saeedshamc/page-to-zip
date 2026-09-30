@@ -528,6 +528,67 @@ async function downloadWithConcurrency(urls, maxConcurrency = 6, onProgress) {
   return { results, errors };
 }
 
+// دانلود با کنترل همزمانی واقعی
+async function downloadResourcesWithConcurrency(resources, urlToLocalPath, zip, usedNames, skippedResources, cssTextCache, onProgress) {
+  const maxConcurrency = currentSettings.concurrentDownloads || 6;
+  const queue = [...resources];
+  const results = await downloadWithConcurrency(queue, maxConcurrency, onProgress);
+
+  for (const [url, { buf, contentType }] of results.entries()) {
+    if (urlToLocalPath.has(url)) continue;
+
+    // بررسی منابع مشترک برای جلوگیری از دانلود دوباره
+    if (sharedResources.has(url)) {
+      const shared = sharedResources.get(url);
+      const folder = guessFolder(url, shared.contentType);
+      const fileName = safeFileName(url, usedNames);
+      const relPath = `${folder}/${fileName}`;
+
+      if (!urlToLocalPath.has(url)) {
+        zip.file(relPath, shared.buf);
+        urlToLocalPath.set(url, relPath);
+      }
+      shared.refCount++;
+      console.log('[PageDownloader] Using shared resource:', url, 'RefCount:', shared.refCount);
+      continue;
+    }
+
+    const folder = guessFolder(url, contentType);
+
+    if (!shouldDownloadResource(folder, contentType)) {
+      console.log('[PageDownloader] Skipping resource based on settings:', url);
+      skippedResources.push(`${url} - Skipped by user settings`);
+      continue;
+    }
+
+    // بهینه‌سازی تصاویر
+    let optimizedBuf = buf;
+    if (folder === 'assets/img' && contentType.includes('image/')) {
+      optimizedBuf = await optimizeImage(buf, contentType, currentSettings.imageQuality);
+    }
+
+    const fileName = safeFileName(url, usedNames);
+    const relPath = `${folder}/${fileName}`;
+    zip.file(relPath, optimizedBuf);
+    urlToLocalPath.set(url, relPath);
+
+    // ذخیره در منابع مشترک
+    sharedResources.set(url, { buf: optimizedBuf, contentType, refCount: 1 });
+
+    if (folder === 'assets/css' || contentType.includes('css')) {
+      const text = new TextDecoder('utf-8').decode(optimizedBuf);
+      cssTextCache.set(url, text);
+    }
+  }
+
+  for (const [url, error] of results.errors.entries()) {
+    console.warn('[PageDownloader] Skipped resource:', url, error.message);
+    skippedResources.push(`${url} - ${error.message}`);
+  }
+
+  return results.results.size;
+}
+
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -562,79 +623,35 @@ async function buildZipForTab(tab) {
   let totalResources = queue.length;
   let downloadedCount = 0;
 
-  while (queue.length) {
-    const url = queue.shift();
-    if (urlToLocalPath.has(url)) continue;
-
-    // بررسی منابع مشترک برای جلوگیری از دانلود دوباره
-    if (sharedResources.has(url)) {
-      const shared = sharedResources.get(url);
-      const folder = guessFolder(url, shared.contentType);
-      const fileName = safeFileName(url, usedNames);
-      const relPath = `${folder}/${fileName}`;
-
-      if (!urlToLocalPath.has(url)) {
-        zip.file(relPath, shared.buf);
-        urlToLocalPath.set(url, relPath);
-      }
-      downloadedCount++;
-      shared.refCount++;
-      console.log('[PageDownloader] Using shared resource:', url, 'RefCount:', shared.refCount);
-      continue;
+  // دانلود منابع موازی
+  const downloadedCount = await downloadResourcesWithConcurrency(
+    resources,
+    urlToLocalPath,
+    zip,
+    usedNames,
+    skippedResources,
+    cssTextCache,
+    (completed, total) => {
+      const progress = Math.round((completed / total) * 100);
+      setBadge(`${progress}%`, '#6b7280');
     }
+  );
 
-    try {
-      const { buf, contentType } = await fetchWithRetry(url);
-      const folder = guessFolder(url, contentType);
-
-      // بررسی تنظیمات کاربر
-      if (!shouldDownloadResource(folder, contentType)) {
-        console.log('[PageDownloader] Skipping resource based on settings:', url);
-        skippedResources.push(`${url} - Skipped by user settings`);
-        continue;
-      }
-
-      // بهینه‌سازی تصاویر
-      let optimizedBuf = buf;
-      if (folder === 'assets/img' && contentType.includes('image/')) {
-        optimizedBuf = await optimizeImage(buf, contentType, currentSettings.imageQuality);
-      }
-
-      const fileName = safeFileName(url, usedNames);
-      const relPath = `${folder}/${fileName}`;
-      zip.file(relPath, optimizedBuf);
-      urlToLocalPath.set(url, relPath);
-
-      // ذخیره در منابع مشترک
-      sharedResources.set(url, { buf: optimizedBuf, contentType, refCount: 1 });
-
-      downloadedCount++;
-
-      // آپدیت نشانگر پیشرفت
-      if (downloadedCount % 5 === 0 || queue.length === 0) {
-        const progress = Math.round((downloadedCount / totalResources) * 100);
+  // استخراج منابع CSS
+  for (const [cssUrl, cssText] of cssTextCache.entries()) {
+    const nested = extractCssUrls(cssText, cssUrl);
+    const nestedResults = await downloadResourcesWithConcurrency(
+      nested,
+      urlToLocalPath,
+      zip,
+      usedNames,
+      skippedResources,
+      cssTextCache,
+      (completed, total) => {
+        const progress = Math.round((completed / total) * 100);
         setBadge(`${progress}%`, '#6b7280');
       }
-
-      // اگر فایل CSS بود، داخلش را هم برای url()های تو در تو (فونت، بک‌گراند) بگرد
-      if (folder === 'assets/css' || contentType.includes('css')) {
-        const text = new TextDecoder('utf-8').decode(buf);
-        cssTextCache.set(url, text);
-        const nested = extractCssUrls(text, url);
-        nested.forEach((nUrl) => {
-          if (!seen.has(nUrl)) {
-            seen.add(nUrl);
-            queue.push(nUrl);
-            totalResources++;
-          }
-        });
-      }
-    } catch (e) {
-      // منبعی که قابل دانلود نبود (مثلاً CORS) را نادیده می‌گیریم؛
-      // لینک اصلی در HTML دست‌نخورده باقی می‌ماند.
-      console.warn('[PageDownloader] Skipped resource:', url, e.message);
-      skippedResources.push(`${url} - ${e.message}`);
-    }
+    );
   }
 
   // بازنویسی متن CSSها با مسیرهای لوکال
