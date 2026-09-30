@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Full Page Downloader (HTML+Assets ZIP)",
-  "version": "5.0.0",
-  "description": "دانلود کامل هر صفحه وب به همراه تمام فایل‌های وابسته (CSS، JS، تصاویر، فونت‌ها) در قالب فایل ZIP یا MHTML با قابلیت خزش چند صفحه‌ای و دانلود موازی",
+  "version": "5.1.0",
+  "description": "دانلود کامل هر صفحه وب به همراه تمام فایل‌های وابسته (CSS، JS، تصاویر، فونت‌ها) در قالب فایل ZIP یا MHTML با قابلیت خزش چند صفحه‌ای، دانلود موازی، مدیریت صف، و بهینه‌سازی تصاویر",
   "permissions": ["activeTab", "scripting", "downloads", "notifications", "storage", "tabs", "cookies"],
   "host_permissions": ["<all_urls>"],
   "background": {
@@ -14,7 +14,7 @@
   },
   "icons": {
     "16": "icons/icon16.png",
-    "48": "icon48.png",
+    "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   }
 }
