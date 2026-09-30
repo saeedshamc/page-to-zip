@@ -987,7 +987,7 @@ async function crawlAndDownload(startTab) {
           }
 
           if (folder === 'assets/css' || contentType.includes('css')) {
-            const text = new TextDecoder('utf-8').decode(buf);
+            const text = new TextDecoder('utf-8').decode(optimizedBuf);
             cssTextCache.set(resourceUrl, text);
             const nested = extractCssUrls(text, resourceUrl);
             nested.forEach((nUrl) => {
