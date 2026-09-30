@@ -132,7 +132,7 @@ async function init() {
   document.getElementById('downloadBtn').addEventListener('click', startDownload);
   document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
 
-  // ذخیره تنظیمات هنگام تغییر
+  // بارگذاری تنظیمات هنگام تغییر
   const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('change', async () => {
@@ -155,6 +155,10 @@ async function init() {
       await saveSettings(newSettings);
     });
   });
+
+  // بارگذاری وضعیت صف
+  loadQueueStatus();
+  setInterval(loadQueueStatus, 2000); // آپدیت هر 2 ثانیه
 
   // بارگذاری تاریخچه
   loadHistory();
@@ -200,6 +204,45 @@ async function clearHistory() {
   } catch (e) {
     showStatus('خطا در پاک کردن تاریخچه', 'error');
   }
+}
+
+// بارگذاری وضعیت صف دانلود
+async function loadQueueStatus() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getQueueStatus' });
+    const queue = response.queue || [];
+    renderQueueStatus(queue);
+  } catch (e) {
+    console.error('Failed to load queue status:', e);
+  }
+}
+
+// نمایش وضعیت صف
+function renderQueueStatus(queue) {
+  const queueStatus = document.getElementById('queueStatus');
+
+  if (queue.length === 0) {
+    queueStatus.innerHTML = '<div class="queue-empty">صف دانلود خالی است</div>';
+    return;
+  }
+
+  queueStatus.innerHTML = queue.map(item => {
+    const statusClass = item.status;
+    const statusText = {
+      'pending': 'در انتظار',
+      'processing': 'در حال دانلود',
+      'completed': 'تکمیل شده',
+      'failed': 'شکست خورد',
+      'cancelled': 'لغو شده'
+    }[item.status] || item.status;
+
+    return `
+      <div class="queue-item">
+        <span>ID: ${item.queueId.slice(-6)}</span>
+        <span class="queue-item-status ${statusClass}">${statusText}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 // شروع

@@ -405,6 +405,128 @@ async function getCookiesForDomain(domain) {
   }
 }
 
+// مدیریت صف دانلود
+const downloadQueue = new Map();
+let isProcessingQueue = false;
+
+// اضافه کردن به صف دانلود
+function addToQueue(tabId, settings) {
+  const queueId = Date.now().toString();
+  downloadQueue.set(queueId, { tabId, settings, status: 'pending', timestamp: Date.now() });
+  processQueue();
+  return queueId;
+}
+
+// پردازش صف دانلود
+async function processQueue() {
+  if (isProcessingQueue || downloadQueue.size === 0) return;
+
+  isProcessingQueue = true;
+
+  for (const [queueId, item] of downloadQueue.entries()) {
+    if (item.status === 'pending') {
+      item.status = 'processing';
+      try {
+        await handleDownload(item.tabId, item.settings);
+        item.status = 'completed';
+      } catch (e) {
+        item.status = 'failed';
+        item.error = e.message;
+      }
+    }
+  }
+
+  // پاکسازی موارد تکمیل شده
+  for (const [queueId, item] of downloadQueue.entries()) {
+    if (item.status === 'completed' || item.status === 'failed') {
+      if (Date.now() - item.timestamp > 60000) { // پاک کردن بعد از 1 دقیقه
+        downloadQueue.delete(queueId);
+      }
+    }
+  }
+
+  isProcessingQueue = false;
+}
+
+// لغو دانلود از صف
+function cancelFromQueue(queueId) {
+  const item = downloadQueue.get(queueId);
+  if (item && item.status === 'pending') {
+    item.status = 'cancelled';
+    return true;
+  }
+  return false;
+}
+
+// دریافت وضعیت صف
+function getQueueStatus() {
+  const status = [];
+  for (const [queueId, item] of downloadQueue.entries()) {
+    status.push({ queueId, status: item.status, timestamp: item.timestamp });
+  }
+  return status;
+}
+const downloadQueue = new Map();
+let isProcessingQueue = false;
+
+// اضافه کردن به صف دانلود
+function addToQueue(tabId, settings) {
+  const queueId = Date.now().toString();
+  downloadQueue.set(queueId, { tabId, settings, status: 'pending', timestamp: Date.now() });
+  processQueue();
+  return queueId;
+}
+
+// پردازش صف دانلود
+async function processQueue() {
+  if (isProcessingQueue || downloadQueue.size === 0) return;
+
+  isProcessingQueue = true;
+
+  for (const [queueId, item] of downloadQueue.entries()) {
+    if (item.status === 'pending') {
+      item.status = 'processing';
+      try {
+        await handleDownload(item.tabId, item.settings);
+        item.status = 'completed';
+      } catch (e) {
+        item.status = 'failed';
+        item.error = e.message;
+      }
+    }
+  }
+
+  // پاکسازی موارد تکمیل شده
+  for (const [queueId, item] of downloadQueue.entries()) {
+    if (item.status === 'completed' || item.status === 'failed') {
+      if (Date.now() - item.timestamp > 60000) { // پاک کردن بعد از 1 دقیقه
+        downloadQueue.delete(queueId);
+      }
+    }
+  }
+
+  isProcessingQueue = false;
+}
+
+// لغو دانلود از صف
+function cancelFromQueue(queueId) {
+  const item = downloadQueue.get(queueId);
+  if (item && item.status === 'pending') {
+    item.status = 'cancelled';
+    return true;
+  }
+  return false;
+}
+async function getCookiesForDomain(domain) {
+  try {
+    const cookies = await chrome.cookies.getAll({ domain });
+    return cookies;
+  } catch (e) {
+    console.warn('[PageDownloader] Failed to get cookies:', e);
+    return [];
+  }
+}
+
 // بهینه‌سازی تصاویر بر اساس کیفیت
 async function optimizeImage(buf, contentType, quality) {
   if (!contentType.includes('image/') || quality === 'high') {
@@ -769,6 +891,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'clearHistory') {
     chrome.storage.local.remove('downloadHistory');
     sendResponse({ success: true });
+    return true;
+  }
+  if (request.action === 'getQueueStatus') {
+    sendResponse({ queue: getQueueStatus() });
+    return true;
+  }
+  if (request.action === 'cancelDownload') {
+    const success = cancelFromQueue(request.queueId);
+    sendResponse({ success });
     return true;
   }
 });

@@ -144,6 +144,51 @@
       color: #1e40af;
       display: block;
     }
+    .queue-status {
+      max-height: 150px;
+      overflow-y: auto;
+      margin: 10px 0;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .queue-item {
+      padding: 8px;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .queue-item:last-child {
+      border-bottom: none;
+    }
+    .queue-item-status {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .queue-item-status.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .queue-item-status.processing {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .queue-item-status.completed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .queue-item-status.failed {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .queue-empty {
+      text-align: center;
+      color: #9ca3af;
+      padding: 20px;
+    }
   </style>
 </head>
 <body>
@@ -233,6 +278,14 @@
         <option value="medium">متوسط (فشرده‌سازی ملایم)</option>
         <option value="low">پایین (فشرده‌سازی قوی)</option>
       </select>
+    </div>
+
+    <div class="separator"></div>
+
+    <h3>صف دانلود</h3>
+
+    <div id="queueStatus" class="queue-status">
+      <div class="queue-empty">صف دانلود خالی است</div>
     </div>
 
     <div class="separator"></div>
