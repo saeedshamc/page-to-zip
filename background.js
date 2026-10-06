@@ -151,7 +151,7 @@ function collectPageData() {
 // ---------------------------------------------------------------------------
 // تابعی که لینک‌ها را از صفحه استخراج می‌کند برای خزش
 // ---------------------------------------------------------------------------
-function extractLinks() {
+function extractLinks(nofollowIgnore = false) {
   const abs = (u) => {
     try {
       if (u.startsWith('data:') || u.startsWith('blob:') || u.startsWith('javascript:') || u.startsWith('mailto:') || u.startsWith('tel:')) return null;
@@ -163,6 +163,10 @@ function extractLinks() {
 
   // لینک‌های معمولی <a>
   document.querySelectorAll('a[href]').forEach((el) => {
+    // بررسی nofollow اگر تنظیم فعال باشد
+    if (el.rel && el.rel.includes('nofollow') && !nofollowIgnore) {
+      return;
+    }
     const u = abs(el.getAttribute('href'));
     if (u && /^https?:/.test(u)) {
       links.add(u);
@@ -363,7 +367,11 @@ let currentSettings = {
   urlPattern: '',
   excludePattern: '',
   minFileSize: 0,
-  excludeExternalDomains: false
+  excludeExternalDomains: false,
+  nofollowIgnore: false,
+  pathFilter: '',
+  crawlIncludePattern: '',
+  crawlExcludePattern: ''
 };
 
 // بارگذاری تنظیمات
@@ -1149,6 +1157,7 @@ async function crawlAndDownload(startTab) {
       const [{ result: linkData }] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: extractLinks,
+        args: [currentSettings.nofollowIgnore]
       });
 
       // فیلتر کردن لینک‌ها بر اساس تنظیمات
@@ -1359,6 +1368,31 @@ function filterLinks(links, baseDomain, currentPageDomain) {
       // فیلتر پروتکل‌های غیر HTTP
       if (!/^https?:/.test(link)) {
         return false;
+      }
+
+      // فیلتر مسیر
+      if (currentSettings.pathFilter && !url.pathname.includes(currentSettings.pathFilter)) {
+        return false;
+      }
+
+      // فیلتر الگوی شامل
+      if (currentSettings.crawlIncludePattern) {
+        try {
+          const regex = new RegExp(currentSettings.crawlIncludePattern, 'i');
+          if (!regex.test(link)) return false;
+        } catch (e) {
+          console.warn('[PageDownloader] Invalid crawl include pattern:', e);
+        }
+      }
+
+      // فیلتر الگوی حذف
+      if (currentSettings.crawlExcludePattern) {
+        try {
+          const regex = new RegExp(currentSettings.crawlExcludePattern, 'i');
+          if (regex.test(link)) return false;
+        } catch (e) {
+          console.warn('[PageDownloader] Invalid crawl exclude pattern:', e);
+        }
       }
 
       return true;

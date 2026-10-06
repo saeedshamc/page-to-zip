@@ -17,7 +17,11 @@ const defaultSettings = {
   urlPattern: '',
   excludePattern: '',
   minFileSize: 0,
-  excludeExternalDomains: false
+  excludeExternalDomains: false,
+  nofollowIgnore: false,
+  pathFilter: '',
+  crawlIncludePattern: '',
+  crawlExcludePattern: ''
 };
 
 // پروفایل‌های تنظیمات
@@ -70,7 +74,11 @@ function getCurrentUISettings() {
     urlPattern: document.getElementById('urlPattern').value,
     excludePattern: document.getElementById('excludePattern').value,
     minFileSize: parseInt(document.getElementById('minFileSize').value) || 0,
-    excludeExternalDomains: document.getElementById('excludeExternalDomains').checked
+    excludeExternalDomains: document.getElementById('excludeExternalDomains').checked,
+    nofollowIgnore: document.getElementById('nofollowIgnore').checked,
+    pathFilter: document.getElementById('pathFilter').value,
+    crawlIncludePattern: document.getElementById('crawlIncludePattern').value,
+    crawlExcludePattern: document.getElementById('crawlExcludePattern').value
   };
 }
 
@@ -94,6 +102,10 @@ function applySettingsToUI(settings) {
   document.getElementById('excludePattern').value = settings.excludePattern || '';
   document.getElementById('minFileSize').value = settings.minFileSize || 0;
   document.getElementById('excludeExternalDomains').checked = settings.excludeExternalDomains || false;
+  document.getElementById('nofollowIgnore').checked = settings.nofollowIgnore || false;
+  document.getElementById('pathFilter').value = settings.pathFilter || '';
+  document.getElementById('crawlIncludePattern').value = settings.crawlIncludePattern || '';
+  document.getElementById('crawlExcludePattern').value = settings.crawlExcludePattern || '';
 }
 
 // آپدیت منوی انتخاب پروفایل
@@ -270,7 +282,7 @@ async function init() {
   document.getElementById('profileSelect').addEventListener('change', loadSelectedProfile);
 
   // بارگذاری تنظیمات هنگام تغییر
-  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains'];
+  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains', 'nofollowIgnore', 'pathFilter', 'crawlIncludePattern', 'crawlExcludePattern'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('change', async () => {
       const newSettings = getCurrentUISettings();
