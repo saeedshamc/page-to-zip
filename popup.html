@@ -189,12 +189,49 @@
       color: #9ca3af;
       padding: 20px;
     }
+    .profile-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .btn-small {
+      flex: 1;
+      padding: 8px;
+      font-size: 12px;
+    }
+    select {
+      flex: 1;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>تنظیمات دانلود صفحه</h2>
-    
+
+    <div class="separator"></div>
+
+    <h3>پروفایل‌های تنظیمات</h3>
+
+    <div class="option">
+      <label for="profileSelect">پروفایل فعلی</label>
+      <select id="profileSelect">
+        <option value="default">پیش‌فرض</option>
+      </select>
+    </div>
+
+    <div class="profile-buttons">
+      <button id="saveProfileBtn" class="btn btn-secondary btn-small">ذخیره پروفایل</button>
+      <button id="deleteProfileBtn" class="btn btn-secondary btn-small">حذف پروفایل</button>
+    </div>
+
+    <div class="separator"></div>
+
+    <h3>تنظیمات منابع</h3>
+
     <div class="option">
       <label for="includeImages">دانلود تصاویر</label>
       <input type="checkbox" id="includeImages" checked>

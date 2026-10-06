@@ -16,15 +16,134 @@ const defaultSettings = {
   imageQuality: 'high'
 };
 
+// پروفایل‌های تنظیمات
+let profiles = {
+  'default': { ...defaultSettings }
+};
+
 // بارگذاری تنظیمات از chrome.storage
 async function loadSettings() {
   const result = await chrome.storage.local.get('downloadSettings');
   return result.downloadSettings || defaultSettings;
 }
 
+// بارگذاری پروفایل‌ها
+async function loadProfiles() {
+  const result = await chrome.storage.local.get('settingsProfiles');
+  if (result.settingsProfiles) {
+    profiles = result.settingsProfiles;
+  }
+  updateProfileSelect();
+}
+
+// ذخیره پروفایل‌ها
+async function saveProfiles() {
+  await chrome.storage.local.set({ settingsProfiles: profiles });
+}
+
 // ذخیره تنظیمات
 async function saveSettings(settings) {
   await chrome.storage.local.set({ downloadSettings: settings });
+}
+
+// دریافت تنظیمات فعلی از UI
+function getCurrentUISettings() {
+  return {
+    includeImages: document.getElementById('includeImages').checked,
+    includeVideos: document.getElementById('includeVideos').checked,
+    includeAudio: document.getElementById('includeAudio').checked,
+    includeFonts: document.getElementById('includeFonts').checked,
+    maxFileSize: parseInt(document.getElementById('maxFileSize').value),
+    followRedirects: document.getElementById('followRedirects').checked,
+    enableCrawling: document.getElementById('enableCrawling').checked,
+    crawlDepth: parseInt(document.getElementById('crawlDepth').value),
+    maxPages: parseInt(document.getElementById('maxPages').value),
+    followInternalLinks: document.getElementById('followInternalLinks').checked,
+    sameDomain: document.getElementById('sameDomain').checked,
+    concurrentDownloads: parseInt(document.getElementById('concurrentDownloads').value),
+    exportFormat: document.getElementById('exportFormat').value,
+    imageQuality: document.getElementById('imageQuality').value
+  };
+}
+
+// اعمال تنظیمات به UI
+function applySettingsToUI(settings) {
+  document.getElementById('includeImages').checked = settings.includeImages;
+  document.getElementById('includeVideos').checked = settings.includeVideos;
+  document.getElementById('includeAudio').checked = settings.includeAudio;
+  document.getElementById('includeFonts').checked = settings.includeFonts;
+  document.getElementById('maxFileSize').value = settings.maxFileSize;
+  document.getElementById('followRedirects').checked = settings.followRedirects;
+  document.getElementById('enableCrawling').checked = settings.enableCrawling;
+  document.getElementById('crawlDepth').value = settings.crawlDepth;
+  document.getElementById('maxPages').value = settings.maxPages;
+  document.getElementById('followInternalLinks').checked = settings.followInternalLinks;
+  document.getElementById('sameDomain').checked = settings.sameDomain;
+  document.getElementById('concurrentDownloads').value = settings.concurrentDownloads;
+  document.getElementById('exportFormat').value = settings.exportFormat || 'zip';
+  document.getElementById('imageQuality').value = settings.imageQuality || 'high';
+}
+
+// آپدیت منوی انتخاب پروفایل
+function updateProfileSelect() {
+  const select = document.getElementById('profileSelect');
+  const currentValue = select.value;
+  select.innerHTML = '';
+  for (const name in profiles) {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name === 'default' ? 'پیش‌فرض' : name;
+    select.appendChild(option);
+  }
+  select.value = currentValue || 'default';
+}
+
+// ذخیره پروفایل جدید
+async function saveProfile() {
+  const name = prompt('نام پروفایل جدید:');
+  if (!name) return;
+
+  if (name === 'default') {
+    showStatus('نام پیش‌فرض مجاز نیست', 'error');
+    return;
+  }
+
+  const settings = getCurrentUISettings();
+  profiles[name] = settings;
+  await saveProfiles();
+  updateProfileSelect();
+  document.getElementById('profileSelect').value = name;
+  showStatus(`پروفایل "${name}" ذخیره شد`, 'success');
+}
+
+// حذف پروفایل
+async function deleteProfile() {
+  const select = document.getElementById('profileSelect');
+  const name = select.value;
+
+  if (name === 'default') {
+    showStatus('پروفایل پیش‌فرض قابل حذف نیست', 'error');
+    return;
+  }
+
+  if (confirm(`آیا مطمئن هستید که می‌خواهید پروفایل "${name}" را حذف کنید؟`)) {
+    delete profiles[name];
+    await saveProfiles();
+    updateProfileSelect();
+    select.value = 'default';
+    applySettingsToUI(profiles['default']);
+    showStatus(`پروفایل "${name}" حذف شد`, 'success');
+  }
+}
+
+// بارگذاری پروفایل انتخاب شده
+function loadSelectedProfile() {
+  const select = document.getElementById('profileSelect');
+  const name = select.value;
+  if (profiles[name]) {
+    applySettingsToUI(profiles[name]);
+    showStatus(`پروفایل "${name}" بارگذاری شد`, 'info');
+  }
 }
 
 // نمایش وضعیت
@@ -55,7 +174,7 @@ function isDownloadableUrl(url) {
 // شروع دانلود
 async function startDownload() {
   const downloadBtn = document.getElementById('downloadBtn');
-  const settings = await loadSettings();
+  const settings = getCurrentUISettings();
 
   // اعتبارسنجی تنظیمات
   if (settings.maxFileSize < 1 || settings.maxFileSize > 500) {
@@ -126,48 +245,30 @@ async function startDownload() {
 
 // مقداردهی اولیه
 async function init() {
+  await loadProfiles();
   const settings = await loadSettings();
 
-  document.getElementById('includeImages').checked = settings.includeImages;
-  document.getElementById('includeVideos').checked = settings.includeVideos;
-  document.getElementById('includeAudio').checked = settings.includeAudio;
-  document.getElementById('includeFonts').checked = settings.includeFonts;
-  document.getElementById('maxFileSize').value = settings.maxFileSize;
-  document.getElementById('followRedirects').checked = settings.followRedirects;
-  document.getElementById('enableCrawling').checked = settings.enableCrawling;
-  document.getElementById('crawlDepth').value = settings.crawlDepth;
-  document.getElementById('maxPages').value = settings.maxPages;
-  document.getElementById('followInternalLinks').checked = settings.followInternalLinks;
-  document.getElementById('sameDomain').checked = settings.sameDomain;
-  document.getElementById('concurrentDownloads').value = settings.concurrentDownloads;
-  document.getElementById('exportFormat').value = settings.exportFormat || 'zip';
-  document.getElementById('imageQuality').value = settings.imageQuality || 'high';
+  applySettingsToUI(settings);
 
   // اضافه کردن event listeners
   document.getElementById('downloadBtn').addEventListener('click', startDownload);
   document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+  document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
+  document.getElementById('deleteProfileBtn').addEventListener('click', deleteProfile);
+  document.getElementById('profileSelect').addEventListener('change', loadSelectedProfile);
 
   // بارگذاری تنظیمات هنگام تغییر
   const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('change', async () => {
-      const newSettings = {
-        includeImages: document.getElementById('includeImages').checked,
-        includeVideos: document.getElementById('includeVideos').checked,
-        includeAudio: document.getElementById('includeAudio').checked,
-        includeFonts: document.getElementById('includeFonts').checked,
-        maxFileSize: parseInt(document.getElementById('maxFileSize').value),
-        followRedirects: document.getElementById('followRedirects').checked,
-        enableCrawling: document.getElementById('enableCrawling').checked,
-        crawlDepth: parseInt(document.getElementById('crawlDepth').value),
-        maxPages: parseInt(document.getElementById('maxPages').value),
-        followInternalLinks: document.getElementById('followInternalLinks').checked,
-        sameDomain: document.getElementById('sameDomain').checked,
-        concurrentDownloads: parseInt(document.getElementById('concurrentDownloads').value),
-        exportFormat: document.getElementById('exportFormat').value,
-        imageQuality: document.getElementById('imageQuality').value
-      };
+      const newSettings = getCurrentUISettings();
       await saveSettings(newSettings);
+      // آپدیت پروفایل پیش‌فرض اگر لازم باشد
+      const currentProfile = document.getElementById('profileSelect').value;
+      if (currentProfile === 'default') {
+        profiles['default'] = newSettings;
+        await saveProfiles();
+      }
     });
   });
 
