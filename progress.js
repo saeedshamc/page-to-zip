@@ -46,6 +46,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'updateProgress') {
     updateProgress(request.data);
   }
+  if (request.action === 'downloadComplete') {
+    updateProgress({
+      progress: 100,
+      status: 'دانلود تکمیل شد',
+      statusType: 'completed'
+    });
+  }
+  if (request.action === 'downloadError') {
+    updateProgress({
+      status: request.error,
+      statusType: 'error'
+    });
+  }
 });
 
 // درخواست وضعیت فعلی
@@ -54,3 +67,12 @@ chrome.runtime.sendMessage({ action: 'getProgress' }, (response) => {
     updateProgress(response.data);
   }
 });
+
+// آپدیت دوره‌ای
+setInterval(() => {
+  chrome.runtime.sendMessage({ action: 'getProgress' }, (response) => {
+    if (response && response.data) {
+      updateProgress(response.data);
+    }
+  });
+}, 1000);

@@ -756,6 +756,9 @@ async function buildZipForTab(tab) {
     (completed, total) => {
       const progress = Math.round((completed / total) * 100);
       setBadge(`${progress}%`, '#6b7280');
+      currentProgress.progress = progress;
+      currentProgress.resourcesDownloaded = completed;
+      chrome.runtime.sendMessage({ action: 'updateProgress', data: currentProgress });
     }
   );
 
@@ -772,6 +775,9 @@ async function buildZipForTab(tab) {
       (completed, total) => {
         const progress = Math.round((completed / total) * 100);
         setBadge(`${progress}%`, '#6b7280');
+        currentProgress.progress = progress;
+        currentProgress.resourcesDownloaded = completed;
+        chrome.runtime.sendMessage({ action: 'updateProgress', data: currentProgress });
       }
     );
   }
@@ -877,7 +883,12 @@ function setBadge(text, color) {
 // هندل کردن پیام از popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'downloadPage') {
-    handleDownload(request.tabId, request.settings);
+    // بلافاصله پاسخ دهیم و دانلود را در background ادامه دهیم
+    sendResponse({ success: true, message: 'Download started' });
+    // اجرای دانلود در background بدون انتظار
+    handleDownload(request.tabId, request.settings).catch(e => {
+      console.error('[PageDownloader] Background download error:', e);
+    });
     return true;
   }
   if (request.action === 'getProgress') {
@@ -933,6 +944,8 @@ async function handleDownload(tabId, settings = null) {
       console.warn('[PageDownloader] این صفحه قابل دانلود نیست (فقط http/https پشتیبانی می‌شود).');
       setBadge('✕', '#e11d48');
       setTimeout(() => setBadge(''), 3000);
+      // ارسال خطا به صفحه progress
+      chrome.runtime.sendMessage({ action: 'downloadError', error: 'این صفحه قابل دانلود نیست' });
       return;
     }
 
@@ -950,6 +963,16 @@ async function handleDownload(tabId, settings = null) {
     console.log('[PageDownloader] Retrieved cookies for domain:', domain, 'Count:', cookies.length);
 
     setBadge('0%', '#6b7280');
+
+    // آپدیت پیشرفت اولیه
+    currentProgress = {
+      progress: 0,
+      pagesDownloaded: 0,
+      resourcesDownloaded: 0,
+      status: 'در حال شروع دانلود...',
+      statusType: 'downloading'
+    };
+    chrome.runtime.sendMessage({ action: 'updateProgress', data: currentProgress });
 
     let zipData;
     if (currentSettings.exportFormat === 'mhtml') {
@@ -978,6 +1001,17 @@ async function handleDownload(tabId, settings = null) {
       cookiesCount: cookies.length
     });
 
+    // آپدیت پیشرفت نهایی
+    currentProgress = {
+      progress: 100,
+      pagesDownloaded: currentSettings.enableCrawling ? currentSettings.maxPages : 1,
+      resourcesDownloaded: currentProgress.resourcesDownloaded,
+      status: 'دانلود تکمیل شد',
+      statusType: 'completed'
+    };
+    chrome.runtime.sendMessage({ action: 'updateProgress', data: currentProgress });
+    chrome.runtime.sendMessage({ action: 'downloadComplete' });
+
     setBadge('OK', '#16a34a');
   } catch (e) {
     console.error('[PageDownloader] خطا در ساخت فایل ZIP:', e);
@@ -989,6 +1023,8 @@ async function handleDownload(tabId, settings = null) {
       message: `خطا در ساخت فایل ZIP: ${e.message}`,
       priority: 2
     });
+    // ارسال خطا به صفحه progress
+    chrome.runtime.sendMessage({ action: 'downloadError', error: e.message });
   } finally {
     // پاکسازی منابع مشترک
     clearSharedResources();

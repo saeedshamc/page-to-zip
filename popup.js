@@ -93,19 +93,34 @@ async function startDownload() {
   }
 
   try {
-    // ارسال پیام به background script
-    await chrome.runtime.sendMessage({
+    // ارسال پیام به background script بدون انتظار برای پاسخ
+    chrome.runtime.sendMessage({
       action: 'downloadPage',
       tabId: tab.id,
       settings: settings
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        showStatus(`خطا: ${chrome.runtime.lastError.message}`, 'error');
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'دانلود صفحه';
+      } else {
+        showStatus('دانلود شروع شد (می‌توانید پاپ‌آپ را ببندید)', 'success');
+        // باز کردن صفحه پیشرفت
+        chrome.tabs.create({ url: 'progress.html' });
+        // بستن پاپ‌آپ پس از مدت کوتاه
+        setTimeout(() => {
+          window.close();
+        }, 1000);
+      }
     });
 
-    showStatus('دانلود شروع شد', 'success');
+    // بستن پاپ‌آپ پس از ارسال پیام
+    return true;
   } catch (error) {
     showStatus(`خطا: ${error.message}`, 'error');
-  } finally {
     downloadBtn.disabled = false;
     downloadBtn.textContent = 'دانلود صفحه';
+    return false;
   }
 }
 
