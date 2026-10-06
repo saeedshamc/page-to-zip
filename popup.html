@@ -206,6 +206,13 @@
       border-radius: 4px;
       font-size: 12px;
     }
+    input[type="text"] {
+      flex: 1;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -315,6 +322,30 @@
         <option value="medium">متوسط (فشرده‌سازی ملایم)</option>
         <option value="low">پایین (فشرده‌سازی قوی)</option>
       </select>
+    </div>
+
+    <div class="separator"></div>
+
+    <h3>فیلتر پیشرفته منابع</h3>
+
+    <div class="option">
+      <label for="urlPattern">الگوی URL (Regex)</label>
+      <input type="text" id="urlPattern" placeholder="مثال: .*\.(jpg|png)$">
+    </div>
+
+    <div class="option">
+      <label for="excludePattern">الگوی حذف (Regex)</label>
+      <input type="text" id="excludePattern" placeholder="مثال: .*\.(pdf|zip)$">
+    </div>
+
+    <div class="option">
+      <label for="minFileSize">حداقل حجم فایل (KB)</label>
+      <input type="number" id="minFileSize" value="0" min="0">
+    </div>
+
+    <div class="option">
+      <label for="excludeExternalDomains">حذف دامنه‌های خارجی</label>
+      <input type="checkbox" id="excludeExternalDomains">
     </div>
 
     <div class="separator"></div>

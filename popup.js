@@ -13,7 +13,11 @@ const defaultSettings = {
   sameDomain: true,
   concurrentDownloads: 6,
   exportFormat: 'zip',
-  imageQuality: 'high'
+  imageQuality: 'high',
+  urlPattern: '',
+  excludePattern: '',
+  minFileSize: 0,
+  excludeExternalDomains: false
 };
 
 // پروفایل‌های تنظیمات
@@ -62,7 +66,11 @@ function getCurrentUISettings() {
     sameDomain: document.getElementById('sameDomain').checked,
     concurrentDownloads: parseInt(document.getElementById('concurrentDownloads').value),
     exportFormat: document.getElementById('exportFormat').value,
-    imageQuality: document.getElementById('imageQuality').value
+    imageQuality: document.getElementById('imageQuality').value,
+    urlPattern: document.getElementById('urlPattern').value,
+    excludePattern: document.getElementById('excludePattern').value,
+    minFileSize: parseInt(document.getElementById('minFileSize').value) || 0,
+    excludeExternalDomains: document.getElementById('excludeExternalDomains').checked
   };
 }
 
@@ -82,6 +90,10 @@ function applySettingsToUI(settings) {
   document.getElementById('concurrentDownloads').value = settings.concurrentDownloads;
   document.getElementById('exportFormat').value = settings.exportFormat || 'zip';
   document.getElementById('imageQuality').value = settings.imageQuality || 'high';
+  document.getElementById('urlPattern').value = settings.urlPattern || '';
+  document.getElementById('excludePattern').value = settings.excludePattern || '';
+  document.getElementById('minFileSize').value = settings.minFileSize || 0;
+  document.getElementById('excludeExternalDomains').checked = settings.excludeExternalDomains || false;
 }
 
 // آپدیت منوی انتخاب پروفایل
@@ -258,7 +270,7 @@ async function init() {
   document.getElementById('profileSelect').addEventListener('change', loadSelectedProfile);
 
   // بارگذاری تنظیمات هنگام تغییر
-  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality'];
+  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('change', async () => {
       const newSettings = getCurrentUISettings();

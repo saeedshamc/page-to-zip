@@ -359,7 +359,11 @@ let currentSettings = {
   sameDomain: true,
   concurrentDownloads: 6,
   exportFormat: 'zip',
-  imageQuality: 'high'
+  imageQuality: 'high',
+  urlPattern: '',
+  excludePattern: '',
+  minFileSize: 0,
+  excludeExternalDomains: false
 };
 
 // بارگذاری تنظیمات
@@ -589,6 +593,59 @@ async function buildMHTML(tab) {
   }
 }
 
+// فیلتر کردن منابع بر اساس تنظیمات پیشرفته
+function shouldIncludeResource(url, contentType, fileSize) {
+  // بررسی الگوی URL شامل
+  if (currentSettings.urlPattern) {
+    try {
+      const regex = new RegExp(currentSettings.urlPattern, 'i');
+      if (!regex.test(url)) {
+        return false;
+      }
+    } catch (e) {
+      console.warn('[PageDownloader] Invalid URL pattern:', e);
+    }
+  }
+
+  // بررسی الگوی حذف
+  if (currentSettings.excludePattern) {
+    try {
+      const regex = new RegExp(currentSettings.excludePattern, 'i');
+      if (regex.test(url)) {
+        return false;
+      }
+    } catch (e) {
+      console.warn('[PageDownloader] Invalid exclude pattern:', e);
+    }
+  }
+
+  // بررسی حداقل حجم فایل
+  if (currentSettings.minFileSize > 0 && fileSize) {
+    const fileSizeKB = fileSize / 1024;
+    if (fileSizeKB < currentSettings.minFileSize) {
+      return false;
+    }
+  }
+
+  // بررسی حذف دامنه‌های خارجی
+  if (currentSettings.excludeExternalDomains) {
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname;
+      if (domain !== currentTabDomain && domain !== '') {
+        return false;
+      }
+    } catch (e) {
+      console.warn('[PageDownloader] Failed to parse URL for domain check:', url);
+    }
+  }
+
+  return true;
+}
+
+// دامنه تب فعلی برای فیلتر دامنه‌های خارجی
+let currentTabDomain = '';
+
 // تابعی برای تلاش مجدد هوشمند در صورت خطای شبکه
 async function fetchWithRetry(url, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
@@ -680,6 +737,13 @@ async function downloadResourcesWithConcurrency(resources, urlToLocalPath, zip, 
     if (!shouldDownloadResource(folder, contentType)) {
       console.log('[PageDownloader] Skipping resource based on settings:', url);
       skippedResources.push(`${url} - Skipped by user settings`);
+      continue;
+    }
+
+    // بررسی فیلتر پیشرفته
+    if (!shouldIncludeResource(url, contentType, buf.byteLength)) {
+      console.log('[PageDownloader] Skipping resource based on advanced filter:', url);
+      skippedResources.push(`${url} - Skipped by advanced filter`);
       continue;
     }
 
@@ -949,6 +1013,9 @@ async function handleDownload(tabId, settings = null) {
       return;
     }
 
+    // تنظیم دامنه تب فعلی برای فیلتر دامنه‌های خارجی
+    currentTabDomain = new URL(tab.url).hostname;
+
     // اگر تنظیمات از popup آمده، آن را اعمال کن
     if (settings) {
       currentSettings = settings;
@@ -1129,6 +1196,13 @@ async function crawlAndDownload(startTab) {
           if (!shouldDownloadResource(folder, contentType)) {
             console.log('[PageDownloader] Skipping resource based on settings:', resourceUrl);
             skippedResources.push(`${resourceUrl} - Skipped by user settings`);
+            continue;
+          }
+
+          // بررسی فیلتر پیشرفته
+          if (!shouldIncludeResource(resourceUrl, contentType, buf.byteLength)) {
+            console.log('[PageDownloader] Skipping resource based on advanced filter:', resourceUrl);
+            skippedResources.push(`${resourceUrl} - Skipped by advanced filter`);
             continue;
           }
 
