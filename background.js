@@ -371,7 +371,9 @@ let currentSettings = {
   nofollowIgnore: false,
   pathFilter: '',
   crawlIncludePattern: '',
-  crawlExcludePattern: ''
+  crawlExcludePattern: '',
+  downloadSpeedLimit: 0,
+  requestDelay: 0
 };
 
 // بارگذاری تنظیمات

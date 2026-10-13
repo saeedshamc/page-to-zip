@@ -268,6 +268,16 @@
       <label for="concurrentDownloads">دانلود همزمان (تعداد)</label>
       <input type="number" id="concurrentDownloads" value="6" min="1" max="12">
     </div>
+
+    <div class="option">
+      <label for="downloadSpeedLimit">محدودیت سرعت دانلود (KB/s)</label>
+      <input type="number" id="downloadSpeedLimit" value="0" min="0" placeholder="0 = بدون محدودیت">
+    </div>
+
+    <div class="option">
+      <label for="requestDelay">تاخیر بین درخواست‌ها (ms)</label>
+      <input type="number" id="requestDelay" value="0" min="0" max="5000">
+    </div>
     
     <div class="option">
       <label for="followRedirects">پیروی از ریدایرکت‌ها</label>
