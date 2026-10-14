@@ -288,6 +288,94 @@
       background: #1e3a8a;
       color: #bfdbfe;
     }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    .modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    body.dark-mode .modal-content {
+      background: #2d2d2d;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .modal-header h3 {
+      margin: 0;
+      color: #333;
+    }
+    body.dark-mode .modal-header h3 {
+      color: #e5e5e5;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+    }
+    body.dark-mode .modal-close {
+      color: #a0a0a0;
+    }
+    .modal-body {
+      margin-bottom: 15px;
+    }
+    .preview-item {
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    body.dark-mode .preview-item {
+      border-bottom-color: #4a4a4a;
+    }
+    .preview-item:last-child {
+      border-bottom: none;
+    }
+    .preview-label {
+      font-weight: bold;
+      color: #666;
+      font-size: 12px;
+    }
+    body.dark-mode .preview-label {
+      color: #a0a0a0;
+    }
+    .preview-value {
+      color: #333;
+      font-size: 12px;
+    }
+    body.dark-mode .preview-value {
+      color: #e5e5e5;
+    }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+    }
+    .modal-cancel {
+      flex: 1;
+    }
+    .modal-confirm {
+      flex: 1;
+    }
     .profile-buttons {
       display: flex;
       gap: 10px;
@@ -518,8 +606,26 @@
     <button id="clearHistoryBtn" class="btn btn-secondary">پاک کردن تاریخچه</button>
 
     <button id="downloadBtn" class="btn btn-download">دانلود صفحه</button>
-    
+    <button id="previewBtn" class="btn btn-secondary">پیش‌نمایش تنظیمات</button>
+
     <div id="status" class="status"></div>
+  </div>
+
+  <!-- مودال پیش‌نمایش تنظیمات -->
+  <div id="previewModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>پیش‌نمایش تنظیمات دانلود</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="previewContent">
+        <!-- محتوای پیش‌نمایش اینجا نمایش داده می‌شود -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary modal-cancel">لغو</button>
+        <button class="btn btn-download modal-confirm">تایید و دانلود</button>
+      </div>
+    </div>
   </div>
 
   <script src="popup.js"></script>

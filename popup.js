@@ -321,6 +321,10 @@ async function init() {
   document.getElementById('deleteProfileBtn').addEventListener('click', deleteProfile);
   document.getElementById('profileSelect').addEventListener('change', loadSelectedProfile);
   document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+  document.getElementById('previewBtn').addEventListener('click', showSettingsPreview);
+  document.querySelector('.modal-close').addEventListener('click', hideSettingsPreview);
+  document.querySelector('.modal-cancel').addEventListener('click', hideSettingsPreview);
+  document.querySelector('.modal-confirm').addEventListener('click', confirmAndDownload);
 
   // بارگذاری تنظیمات هنگام تغییر
   const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains', 'nofollowIgnore', 'pathFilter', 'crawlIncludePattern', 'crawlExcludePattern', 'downloadSpeedLimit', 'requestDelay', 'requestTimeout', 'pageLoadTimeout', 'maxDownloadTime'];
@@ -424,6 +428,93 @@ function renderQueueStatus(queue) {
       </div>
     `;
   }).join('');
+}
+
+// نمایش پیش‌نمایش تنظیمات
+function showSettingsPreview() {
+  const settings = getCurrentUISettings();
+  const previewContent = document.getElementById('previewContent');
+
+  const previewHTML = `
+    <div class="preview-item">
+      <div class="preview-label">تنظیمات منابع:</div>
+      <div class="preview-value">
+        تصاویر: ${settings.includeImages ? '✓' : '✗'} |
+        ویدیو: ${settings.includeVideos ? '✓' : '✗'} |
+        صوت: ${settings.includeAudio ? '✓' '✗'} |
+        فونت: ${settings.includeFonts ? '✓' : '✗'}
+      </div>
+    </div>
+    <div class="preview-item">
+      <div class="preview-label">حداکثر حجم فایل:</div>
+      <div class="preview-value">${settings.maxFileSize} MB</div>
+    </div>
+    <div class="preview-item">
+      <div class="preview-label">دانلود همزمان:</div>
+      <div class="preview-value">${settings.concurrentDownloads} درخواست</div>
+    </div>
+    <div class="preview-item">
+      <div class="preview-label">تنظیمات خزش:</div>
+      <div class="preview-value">
+        فعال: ${settings.enableCrawling ? '✓' : '✗'} |
+        عمق: ${settings.crawlDepth} |
+        صفحات: ${settings.maxPages}
+      </div>
+    </div>
+    <div class="preview-item">
+      <div class="preview-label">فیلترهای لینک:</div>
+      <div class="preview-value">
+        داخلی: ${settings.followInternalLinks ? '✓' : '✗'} |
+        همان دامنه: ${settings.sameDomain ? '✓' : '✗'}
+      </div>
+    </div>
+    <div class="preview-item">
+      <div class="preview-label">فرمت خروجی:</div>
+      <div class="preview-value">${settings.exportFormat.toUpperCase()}</div>
+    </div>
+    <div class="preview-item">
+      <div class="preview-label">کیفیت تصاویر:</div>
+      <div class="preview-value">${settings.imageQuality}</div>
+    </div>
+    ${settings.urlPattern ? `
+    <div class="preview-item">
+      <div class="preview-label">الگوی URL:</div>
+      <div class="preview-value">${settings.urlPattern}</div>
+    </div>
+    ` : ''}
+    ${settings.excludePattern ? `
+    <div class="preview-item">
+      <div class="preview-label">الگوی حذف:</div>
+      <div class="preview-value">${settings.excludePattern}</div>
+    </div>
+    ` : ''}
+    ${settings.downloadSpeedLimit > 0 ? `
+    <div class="preview-item">
+      <div class="preview-label">محدودیت سرعت:</div>
+      <div class="preview-value">${settings.downloadSpeedLimit} KB/s</div>
+    </div>
+    ` : ''}
+    ${settings.requestDelay > 0 ? `
+    <div class="preview-item">
+      <div class="preview-label">تاخیر درخواست:</div>
+      <div class="preview-value">${settings.requestDelay} ms</div>
+    </div>
+    ` : ''}
+  `;
+
+  previewContent.innerHTML = previewHTML;
+  document.getElementById('previewModal').classList.add('show');
+}
+
+// بستن مودال پیش‌نمایش
+function hideSettingsPreview() {
+  document.getElementById('previewModal').classList.remove('show');
+}
+
+// تایید و دانلود از مودال
+async function confirmAndDownload() {
+  hideSettingsPreview();
+  await startDownload();
 }
 
 // شروع
