@@ -373,7 +373,10 @@ let currentSettings = {
   crawlIncludePattern: '',
   crawlExcludePattern: '',
   downloadSpeedLimit: 0,
-  requestDelay: 0
+  requestDelay: 0,
+  requestTimeout: 30,
+  pageLoadTimeout: 10,
+  maxDownloadTime: 30
 };
 
 // بارگذاری تنظیمات
@@ -396,25 +399,38 @@ async function fetchAsArrayBuffer(url) {
   // اعمال محدودیت سرعت
   await applyRateLimit();
 
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), currentSettings.requestTimeout * 1000);
 
-  const contentLength = res.headers.get('content-length');
-  if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
-    throw new Error(`File too large (${(parseInt(contentLength) / 1024 / 1024).toFixed(2)}MB > ${MAX_FILE_SIZE / 1024 / 1024}MB limit)`);
+  try {
+    const res = await fetch(url, { credentials: 'include', signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const contentLength = res.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > MAX_FILE_SIZE) {
+      throw new Error(`File too large (${(parseInt(contentLength) / 1024 / 1024).toFixed(2)}MB > ${MAX_FILE_SIZE / 1024 / 1024}MB limit)`);
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    const buf = await res.arrayBuffer();
+
+    // آپدیت حجم دانلود شده برای محدودیت سرعت
+    downloadedBytes += buf.byteLength;
+
+    if (buf.byteLength > MAX_FILE_SIZE) {
+      throw new Error(`File too large (${(buf.byteLength / 1024 / 1024).toFixed(2)}MB > ${MAX_FILE_SIZE / 1024 / 1024}MB limit)`);
+    }
+
+    return { buf, contentType };
+  } catch (e) {
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      throw new Error(`Request timeout after ${currentSettings.requestTimeout}s`);
+    }
+    throw e;
   }
-
-  const contentType = res.headers.get('content-type') || '';
-  const buf = await res.arrayBuffer();
-
-  // آپدیت حجم دانلود شده برای محدودیت سرعت
-  downloadedBytes += buf.byteLength;
-
-  if (buf.byteLength > MAX_FILE_SIZE) {
-    throw new Error(`File too large (${(buf.byteLength / 1024 / 1024).toFixed(2)}MB > ${MAX_FILE_SIZE / 1024 / 1024}MB limit)`);
-  }
-
-  return { buf, contentType };
 }
 
 // دریافت cookies برای دامنه‌های احراز هویت شده
@@ -1070,6 +1086,8 @@ function sendProgressUpdate() {
 
 // تابع هندل کردن دانلود
 async function handleDownload(tabId, settings = null) {
+  let maxDownloadTimer = null;
+
   try {
     const tab = await chrome.tabs.get(tabId);
 
@@ -1095,6 +1113,11 @@ async function handleDownload(tabId, settings = null) {
       skippedResources: 0,
       errors: []
     };
+
+    // تنظیم تایم‌اوت کلی دانلود
+    maxDownloadTimer = setTimeout(() => {
+      throw new Error(`Download timeout after ${currentSettings.maxDownloadTime} minutes`);
+    }, currentSettings.maxDownloadTime * 60 * 1000);
 
     // اگر تنظیمات از popup آمده، آن را اعمال کن
     if (settings) {
@@ -1142,6 +1165,9 @@ async function handleDownload(tabId, settings = null) {
     downloadStats.endTime = Date.now();
     downloadStats.totalSize = base64.length / 1024 / 1024; // MB
 
+    // پاک کردن تایم‌اوت کلی
+    clearTimeout(maxDownloadTimer);
+
     // ذخیره در تاریخچه با آمار
     await saveDownloadHistory({
       url: tab.url,
@@ -1168,6 +1194,7 @@ async function handleDownload(tabId, settings = null) {
     setBadge('OK', '#16a34a');
   } catch (e) {
     console.error('[PageDownloader] خطا در ساخت فایل ZIP:', e);
+    clearTimeout(maxDownloadTimer);
     downloadStats.errors.push(e.message);
     setBadge('ERR', '#e11d48');
     chrome.notifications.create({
@@ -1223,8 +1250,17 @@ async function crawlAndDownload(startTab) {
       } else {
         tab = await chrome.tabs.create({ url, active: false });
         createdTab = tab;
-        // صبر برای لود شدن صفحه
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // صبر برای لود شدن صفحه با تایم‌اوت
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Page load timeout')), currentSettings.pageLoadTimeout * 1000);
+          chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
+            if (tabId === tab.id && changeInfo.status === 'complete') {
+              clearTimeout(timeout);
+              chrome.tabs.onUpdated.removeListener(listener);
+              resolve();
+            }
+          });
+        });
       }
 
       // استخراج لینک‌ها و منابع

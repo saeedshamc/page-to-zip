@@ -23,7 +23,10 @@ const defaultSettings = {
   crawlIncludePattern: '',
   crawlExcludePattern: '',
   downloadSpeedLimit: 0,
-  requestDelay: 0
+  requestDelay: 0,
+  requestTimeout: 30,
+  pageLoadTimeout: 10,
+  maxDownloadTime: 30
 };
 
 // پروفایل‌های تنظیمات
@@ -82,7 +85,10 @@ function getCurrentUISettings() {
     crawlIncludePattern: document.getElementById('crawlIncludePattern').value,
     crawlExcludePattern: document.getElementById('crawlExcludePattern').value,
     downloadSpeedLimit: parseInt(document.getElementById('downloadSpeedLimit').value) || 0,
-    requestDelay: parseInt(document.getElementById('requestDelay').value) || 0
+    requestDelay: parseInt(document.getElementById('requestDelay').value) || 0,
+    requestTimeout: parseInt(document.getElementById('requestTimeout').value) || 30,
+    pageLoadTimeout: parseInt(document.getElementById('pageLoadTimeout').value) || 10,
+    maxDownloadTime: parseInt(document.getElementById('maxDownloadTime').value) || 30
   };
 }
 
@@ -112,6 +118,9 @@ function applySettingsToUI(settings) {
   document.getElementById('crawlExcludePattern').value = settings.crawlExcludePattern || '';
   document.getElementById('downloadSpeedLimit').value = settings.downloadSpeedLimit || 0;
   document.getElementById('requestDelay').value = settings.requestDelay || 0;
+  document.getElementById('requestTimeout').value = settings.requestTimeout || 30;
+  document.getElementById('pageLoadTimeout').value = settings.pageLoadTimeout || 10;
+  document.getElementById('maxDownloadTime').value = settings.maxDownloadTime || 30;
 }
 
 // آپدیت منوی انتخاب پروفایل
@@ -288,7 +297,7 @@ async function init() {
   document.getElementById('profileSelect').addEventListener('change', loadSelectedProfile);
 
   // بارگذاری تنظیمات هنگام تغییر
-  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains', 'nofollowIgnore', 'pathFilter', 'crawlIncludePattern', 'crawlExcludePattern', 'downloadSpeedLimit', 'requestDelay'];
+  const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains', 'nofollowIgnore', 'pathFilter', 'crawlIncludePattern', 'crawlExcludePattern', 'downloadSpeedLimit', 'requestDelay', 'requestTimeout', 'pageLoadTimeout', 'maxDownloadTime'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('change', async () => {
       const newSettings = getCurrentUISettings();
