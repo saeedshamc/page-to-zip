@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Full Page Downloader (HTML+Assets ZIP)",
-  "version": "5.1.0",
-  "description": "دانلود کامل هر صفحه وب به همراه تمام فایل‌های وابسته (CSS، JS، تصاویر، فونت‌ها) در قالب فایل ZIP یا MHTML با قابلیت خزش چند صفحه‌ای، دانلود موازی، مدیریت صف، و بهینه‌سازی تصاویر",
+  "version": "6.0.0",
+  "description": "دانلود کامل هر صفحه وب به همراه تمام فایل‌های وابسته (CSS، JS، تصاویر، فونت‌ها) در قالب فایل ZIP یا MHTML با قابلیت خزش چند صفحه‌ای، دانلود موازی، مدیریت صف، فیلتر پیشرفته، محدودیت سرعت، و تم تاریک/روشن",
   "permissions": ["activeTab", "scripting", "downloads", "notifications", "storage", "tabs", "cookies"],
   "host_permissions": ["<all_urls>"],
   "background": {
