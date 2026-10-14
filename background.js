@@ -390,6 +390,12 @@ async function loadSettings() {
 }
 
 async function fetchAsArrayBuffer(url) {
+  // اعمال تاخیر بین درخواست‌ها
+  await applyRequestDelay();
+
+  // اعمال محدودیت سرعت
+  await applyRateLimit();
+
   const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -400,6 +406,9 @@ async function fetchAsArrayBuffer(url) {
 
   const contentType = res.headers.get('content-type') || '';
   const buf = await res.arrayBuffer();
+
+  // آپدیت حجم دانلود شده برای محدودیت سرعت
+  downloadedBytes += buf.byteLength;
 
   if (buf.byteLength > MAX_FILE_SIZE) {
     throw new Error(`File too large (${(buf.byteLength / 1024 / 1024).toFixed(2)}MB > ${MAX_FILE_SIZE / 1024 / 1024}MB limit)`);
@@ -655,6 +664,44 @@ function shouldIncludeResource(url, contentType, fileSize) {
 
 // دامنه تب فعلی برای فیلتر دامنه‌های خارجی
 let currentTabDomain = '';
+
+// متغیرهای کنترل سرعت
+let lastRequestTime = 0;
+let downloadedBytes = 0;
+let speedCheckInterval = null;
+
+// اعمال محدودیت سرعت دانلود
+async function applyRateLimit() {
+  const speedLimit = currentSettings.downloadSpeedLimit; // KB/s
+  if (speedLimit <= 0) return;
+
+  const now = Date.now();
+  const timeSinceLastCheck = now - lastRequestTime;
+
+  if (timeSinceLastCheck >= 1000) {
+    // هر ثانیه، حجم دانلود شده را ریست کن
+    downloadedBytes = 0;
+    lastRequestTime = now;
+  }
+
+  // اگر به محدودیت سرعت رسیدیم، صبر کن
+  if (downloadedBytes >= speedLimit * 1024) {
+    const waitTime = 1000 - timeSinceLastCheck;
+    if (waitTime > 0) {
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    downloadedBytes = 0;
+    lastRequestTime = Date.now();
+  }
+}
+
+// اعمال تاخیر بین درخواست‌ها
+async function applyRequestDelay() {
+  const delay = currentSettings.requestDelay; // ms
+  if (delay > 0) {
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+}
 
 // تابعی برای تلاش مجدد هوشمند در صورت خطای شبکه
 async function fetchWithRetry(url, maxRetries = 3) {
