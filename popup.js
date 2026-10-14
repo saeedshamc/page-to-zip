@@ -26,8 +26,28 @@ const defaultSettings = {
   requestDelay: 0,
   requestTimeout: 30,
   pageLoadTimeout: 10,
-  maxDownloadTime: 30
+  maxDownloadTime: 30,
+  theme: 'light'
 };
+
+// مدیریت تم
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.body.classList.add('dark-mode');
+    document.getElementById('themeToggle').textContent = '☀️';
+  } else {
+    document.body.classList.remove('dark-mode');
+    document.getElementById('themeToggle').textContent = '🌙';
+  }
+}
+
+function toggleTheme() {
+  const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  applyTheme(newTheme);
+  // ذخیره تم
+  chrome.storage.local.set({ theme: newTheme });
+}
 
 // پروفایل‌های تنظیمات
 let profiles = {
@@ -289,12 +309,18 @@ async function init() {
 
   applySettingsToUI(settings);
 
+  // اعمال تم ذخیره شده
+  const themeResult = await chrome.storage.local.get('theme');
+  const savedTheme = themeResult.theme || 'light';
+  applyTheme(savedTheme);
+
   // اضافه کردن event listeners
   document.getElementById('downloadBtn').addEventListener('click', startDownload);
   document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
   document.getElementById('saveProfileBtn').addEventListener('click', saveProfile);
   document.getElementById('deleteProfileBtn').addEventListener('click', deleteProfile);
   document.getElementById('profileSelect').addEventListener('change', loadSelectedProfile);
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 
   // بارگذاری تنظیمات هنگام تغییر
   const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains', 'nofollowIgnore', 'pathFilter', 'crawlIncludePattern', 'crawlExcludePattern', 'downloadSpeedLimit', 'requestDelay', 'requestTimeout', 'pageLoadTimeout', 'maxDownloadTime'];

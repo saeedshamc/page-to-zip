@@ -11,18 +11,51 @@
       padding: 15px;
       background: #f5f5f5;
       margin: 0;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark-mode {
+      background: #1a1a1a;
+      color: #e5e5e5;
     }
     .container {
       background: white;
       border-radius: 8px;
       padding: 15px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      transition: background 0.3s;
+    }
+    body.dark-mode .container {
+      background: #2d2d2d;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .theme-toggle {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    .theme-toggle:hover {
+      background: rgba(0,0,0,0.1);
+    }
+    body.dark-mode .theme-toggle:hover {
+      background: rgba(255,255,255,0.1);
     }
     h2 {
       margin: 0 0 15px 0;
       color: #333;
       font-size: 16px;
       text-align: center;
+    }
+    body.dark-mode h2 {
+      color: #e5e5e5;
     }
     .option {
       margin: 10px 0;
@@ -35,6 +68,9 @@
       font-size: 13px;
       color: #555;
     }
+    body.dark-mode .option label {
+      color: #b0b0b0;
+    }
     .option input[type="checkbox"] {
       width: 18px;
       height: 18px;
@@ -46,17 +82,42 @@
       border: 1px solid #ddd;
       border-radius: 4px;
       font-size: 12px;
+      background: white;
+    }
+    body.dark-mode .option input[type="number"] {
+      background: #3d3d3d;
+      border-color: #4a4a4a;
+      color: #e5e5e5;
+    }
+    .option input[type="text"] {
+      flex: 1;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      background: white;
+    }
+    body.dark-mode .option input[type="text"] {
+      background: #3d3d3d;
+      border-color: #4a4a4a;
+      color: #e5e5e5;
     }
     .separator {
       height: 1px;
       background: #e5e7eb;
       margin: 15px 0;
     }
+    body.dark-mode .separator {
+      background: #4a4a4a;
+    }
     h3 {
       margin: 0 0 10px 0;
       color: #666;
       font-size: 14px;
       text-align: center;
+    }
+    body.dark-mode h3 {
+      color: #a0a0a0;
     }
     .btn {
       width: 100%;
@@ -189,6 +250,44 @@
       color: #9ca3af;
       padding: 20px;
     }
+    body.dark-mode .queue-empty {
+      color: #6b7280;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+      display: none;
+    }
+    .status.success {
+      background: #dcfce7;
+      color: #166534;
+      display: block;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      display: block;
+    }
+    .status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      display: block;
+    }
+    body.dark-mode .status.success {
+      background: #14532d;
+      color: #bbf7d0;
+    }
+    body.dark-mode .status.error {
+      background: #7f1d1d;
+      color: #fecaca;
+    }
+    body.dark-mode .status.info {
+      background: #1e3a8a;
+      color: #bfdbfe;
+    }
     .profile-buttons {
       display: flex;
       gap: 10px;
@@ -217,7 +316,10 @@
 </head>
 <body>
   <div class="container">
-    <h2>تنظیمات دانلود صفحه</h2>
+    <div class="header">
+      <h2>تنظیمات دانلود صفحه</h2>
+      <button id="themeToggle" class="theme-toggle">🌙</button>
+    </div>
 
     <div class="separator"></div>
 
