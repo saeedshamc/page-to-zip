@@ -665,6 +665,17 @@ function shouldIncludeResource(url, contentType, fileSize) {
 // دامنه تب فعلی برای فیلتر دامنه‌های خارجی
 let currentTabDomain = '';
 
+// آمار دانلود
+let downloadStats = {
+  startTime: 0,
+  endTime: 0,
+  totalPages: 0,
+  totalResources: 0,
+  totalSize: 0,
+  skippedResources: 0,
+  errors: []
+};
+
 // متغیرهای کنترل سرعت
 let lastRequestTime = 0;
 let downloadedBytes = 0;
@@ -865,6 +876,7 @@ async function buildZipForTab(tab) {
 
   let totalResources = queue.length;
   let downloadedCount = 0;
+  downloadStats.totalPages = 1;
 
   // دانلود منابع موازی
   const downloadedCount = await downloadResourcesWithConcurrency(
@@ -1073,6 +1085,17 @@ async function handleDownload(tabId, settings = null) {
     // تنظیم دامنه تب فعلی برای فیلتر دامنه‌های خارجی
     currentTabDomain = new URL(tab.url).hostname;
 
+    // ریست کردن آمار دانلود
+    downloadStats = {
+      startTime: Date.now(),
+      endTime: 0,
+      totalPages: 0,
+      totalResources: 0,
+      totalSize: 0,
+      skippedResources: 0,
+      errors: []
+    };
+
     // اگر تنظیمات از popup آمده، آن را اعمال کن
     if (settings) {
       currentSettings = settings;
@@ -1115,14 +1138,19 @@ async function handleDownload(tabId, settings = null) {
     const downloadId = await chrome.downloads.download({ url: dataUrl, filename, saveAs: true });
     console.log('[PageDownloader] دانلود ثبت شد، شناسه:', downloadId);
 
-    // ذخیره در تاریخچه
+    // محاسبه زمان پایان
+    downloadStats.endTime = Date.now();
+    downloadStats.totalSize = base64.length / 1024 / 1024; // MB
+
+    // ذخیره در تاریخچه با آمار
     await saveDownloadHistory({
       url: tab.url,
       title: title,
       filename: filename,
       timestamp: Date.now(),
       settings: currentSettings,
-      cookiesCount: cookies.length
+      cookiesCount: cookies.length,
+      stats: downloadStats
     });
 
     // آپدیت پیشرفت نهایی
@@ -1131,14 +1159,16 @@ async function handleDownload(tabId, settings = null) {
       pagesDownloaded: currentSettings.enableCrawling ? currentSettings.maxPages : 1,
       resourcesDownloaded: currentProgress.resourcesDownloaded,
       status: 'دانلود تکمیل شد',
-      statusType: 'completed'
+      statusType: 'completed',
+      stats: downloadStats
     };
     chrome.runtime.sendMessage({ action: 'updateProgress', data: currentProgress });
-    chrome.runtime.sendMessage({ action: 'downloadComplete' });
+    chrome.runtime.sendMessage({ action: 'downloadComplete', stats: downloadStats });
 
     setBadge('OK', '#16a34a');
   } catch (e) {
     console.error('[PageDownloader] خطا در ساخت فایل ZIP:', e);
+    downloadStats.errors.push(e.message);
     setBadge('ERR', '#e11d48');
     chrome.notifications.create({
       type: 'basic',
@@ -1148,7 +1178,7 @@ async function handleDownload(tabId, settings = null) {
       priority: 2
     });
     // ارسال خطا به صفحه progress
-    chrome.runtime.sendMessage({ action: 'downloadError', error: e.message });
+    chrome.runtime.sendMessage({ action: 'downloadError', error: e.message, stats: downloadStats });
   } finally {
     // پاکسازی منابع مشترک
     clearSharedResources();
@@ -1242,6 +1272,7 @@ async function crawlAndDownload(startTab) {
             urlToLocalPath.set(resourceUrl, relPath);
           }
           downloadedCount++;
+          downloadStats.totalResources++;
           shared.refCount++;
           console.log('[PageDownloader] Using shared resource:', resourceUrl, 'RefCount:', shared.refCount);
           continue;
@@ -1279,6 +1310,8 @@ async function crawlAndDownload(startTab) {
           sharedResources.set(resourceUrl, { buf: optimizedBuf, contentType, refCount: 1 });
 
           downloadedCount++;
+          downloadStats.totalResources++;
+          downloadStats.totalSize += optimizedBuf.byteLength;
 
           if (downloadedCount % 5 === 0 || queue.length === 0) {
             const progress = Math.round((downloadedCount / totalResources) * 100);
