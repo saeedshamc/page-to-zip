@@ -472,6 +472,11 @@ async function init() {
     });
   });
 
+  // باز کردن viewer
+  document.getElementById('openViewerBtn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('viewer.html') });
+  });
+
   // نمایش راهنمای میانبرها
   showStatus('از میانبرهای کیبورد استفاده کنید: Ctrl+Shift+D/S/T', 'info');
 
