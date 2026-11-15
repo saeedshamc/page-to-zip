@@ -54,6 +54,130 @@ let profiles = {
   'default': { ...defaultSettings }
 };
 
+// پروفایل‌های آماده
+const presetProfiles = {
+  'complete': {
+    includeImages: true,
+    includeVideos: true,
+    includeAudio: true,
+    includeFonts: true,
+    maxFileSize: 100,
+    followRedirects: true,
+    enableCrawling: true,
+    crawlDepth: 3,
+    maxPages: 50,
+    followInternalLinks: true,
+    sameDomain: true,
+    concurrentDownloads: 8,
+    exportFormat: 'zip',
+    imageQuality: 'high',
+    urlPattern: '',
+    excludePattern: '',
+    minFileSize: 0,
+    excludeExternalDomains: false,
+    nofollowIgnore: false,
+    pathFilter: '',
+    crawlIncludePattern: '',
+    crawlExcludePattern: '',
+    downloadSpeedLimit: 0,
+    requestDelay: 100,
+    requestTimeout: 60,
+    pageLoadTimeout: 30,
+    maxDownloadTime: 60,
+    theme: 'light'
+  },
+  'text': {
+    includeImages: false,
+    includeVideos: false,
+    includeAudio: false,
+    includeFonts: true,
+    maxFileSize: 5,
+    followRedirects: true,
+    enableCrawling: false,
+    crawlDepth: 1,
+    maxPages: 10,
+    followInternalLinks: true,
+    sameDomain: true,
+    concurrentDownloads: 4,
+    exportFormat: 'zip',
+    imageQuality: 'low',
+    urlPattern: '',
+    excludePattern: '\\.(png|jpg|jpeg|gif|webp|svg|mp4|webm|mp3|wav|ogg)$',
+    minFileSize: 0,
+    excludeExternalDomains: true,
+    nofollowIgnore: false,
+    pathFilter: '',
+    crawlIncludePattern: '',
+    crawlExcludePattern: '',
+    downloadSpeedLimit: 0,
+    requestDelay: 0,
+    requestTimeout: 30,
+    pageLoadTimeout: 10,
+    maxDownloadTime: 30,
+    theme: 'light'
+  },
+  'lightweight': {
+    includeImages: true,
+    includeVideos: false,
+    includeAudio: false,
+    includeFonts: true,
+    maxFileSize: 10,
+    followRedirects: true,
+    enableCrawling: true,
+    crawlDepth: 2,
+    maxPages: 20,
+    followInternalLinks: true,
+    sameDomain: true,
+    concurrentDownloads: 6,
+    exportFormat: 'zip',
+    imageQuality: 'medium',
+    urlPattern: '',
+    excludePattern: '\\.(mp4|webm|mp3|wav|ogg|avi|mkv)$',
+    minFileSize: 0,
+    excludeExternalDomains: true,
+    nofollowIgnore: false,
+    pathFilter: '',
+    crawlIncludePattern: '',
+    crawlExcludePattern: '',
+    downloadSpeedLimit: 500,
+    requestDelay: 200,
+    requestTimeout: 30,
+    pageLoadTimeout: 15,
+    maxDownloadTime: 30,
+    theme: 'light'
+  },
+  'archive': {
+    includeImages: true,
+    includeVideos: true,
+    includeAudio: true,
+    includeFonts: true,
+    maxFileSize: 200,
+    followRedirects: true,
+    enableCrawling: true,
+    crawlDepth: 5,
+    maxPages: 100,
+    followInternalLinks: true,
+    sameDomain: false,
+    concurrentDownloads: 12,
+    exportFormat: 'zip',
+    imageQuality: 'high',
+    urlPattern: '',
+    excludePattern: '',
+    minFileSize: 0,
+    excludeExternalDomains: false,
+    nofollowIgnore: true,
+    pathFilter: '',
+    crawlIncludePattern: '',
+    crawlExcludePattern: '',
+    downloadSpeedLimit: 0,
+    requestDelay: 0,
+    requestTimeout: 120,
+    pageLoadTimeout: 60,
+    maxDownloadTime: 120,
+    theme: 'light'
+  }
+};
+
 // بارگذاری تنظیمات از chrome.storage
 async function loadSettings() {
   const result = await chrome.storage.local.get('downloadSettings');
@@ -205,6 +329,20 @@ function loadSelectedProfile() {
   }
 }
 
+// بارگذاری پروفایل آماده
+function loadPresetProfile(presetName) {
+  if (presetProfiles[presetName]) {
+    applySettingsToUI(presetProfiles[presetName]);
+    const presetLabels = {
+      'complete': 'بلاگ کامل',
+      'text': 'فقط متن',
+      'lightweight': 'دریفت',
+      'archive': 'آرشیو'
+    };
+    showStatus(`پروفایل آماده "${presetLabels[presetName]}" بارگذاری شد`, 'success');
+  }
+}
+
 // نمایش وضعیت
 function showStatus(message, type) {
   const status = document.getElementById('status');
@@ -325,6 +463,14 @@ async function init() {
   document.querySelector('.modal-close').addEventListener('click', hideSettingsPreview);
   document.querySelector('.modal-cancel').addEventListener('click', hideSettingsPreview);
   document.querySelector('.modal-confirm').addEventListener('click', confirmAndDownload);
+
+  // اضافه کردن event listeners برای دکمه‌های پروفایل آماده
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.getAttribute('data-preset');
+      loadPresetProfile(preset);
+    });
+  });
 
   // بارگذاری تنظیمات هنگام تغییر
   const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains', 'nofollowIgnore', 'pathFilter', 'crawlIncludePattern', 'crawlExcludePattern', 'downloadSpeedLimit', 'requestDelay', 'requestTimeout', 'pageLoadTimeout', 'maxDownloadTime'];

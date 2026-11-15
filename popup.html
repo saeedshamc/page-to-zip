@@ -386,6 +386,31 @@
       padding: 8px;
       font-size: 12px;
     }
+    .preset-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .preset-btn {
+      padding: 8px;
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    .preset-btn:hover {
+      background: #4b5563;
+    }
+    body.dark-mode .preset-btn {
+      background: #4a5568;
+    }
+    body.dark-mode .preset-btn:hover {
+      background: #374151;
+    }
     select {
       flex: 1;
       padding: 5px;
@@ -423,6 +448,17 @@
     <div class="profile-buttons">
       <button id="saveProfileBtn" class="btn btn-secondary btn-small">ذخیره پروفایل</button>
       <button id="deleteProfileBtn" class="btn btn-secondary btn-small">حذف پروفایل</button>
+    </div>
+
+    <div class="separator"></div>
+
+    <h3>پروفایل‌های آماده</h3>
+
+    <div class="preset-buttons">
+      <button class="preset-btn" data-preset="complete">بلاگ کامل</button>
+      <button class="preset-btn" data-preset="text">فقط متن</button>
+      <button class="preset-btn" data-preset="lightweight">دریفت</button>
+      <button class="preset-btn" data-preset="archive">آرشیو</button>
     </div>
 
     <div class="separator"></div>
