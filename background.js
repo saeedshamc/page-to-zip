@@ -628,6 +628,41 @@ async function buildMHTML(tab) {
   }
 }
 
+// ساخت فایل PDF با استفاده از chrome.debugger API
+async function buildPDF(tab) {
+  try {
+    // اتصال debugger به تب
+    const debuggerTarget = { tabId: tab.id };
+    await chrome.debugger.attach(debuggerTarget, '1.3');
+
+    try {
+      // تولید PDF
+      const result = await chrome.debugger.sendCommand(debuggerTarget, 'Page.printToPDF', {
+        printBackground: true,
+        preferCSSPageSize: true,
+        landscape: false,
+        displayHeaderFooter: false,
+        transferMode: 'returnAsBase64'
+      });
+
+      await chrome.debugger.detach(debuggerTarget);
+
+      return { base64: result.data, title: tab.title || 'page' };
+    } catch (e) {
+      // در صورت خطا، قطع اتصال debugger
+      try {
+        await chrome.debugger.detach(debuggerTarget);
+      } catch (detachError) {
+        console.warn('[PageDownloader] Failed to detach debugger:', detachError);
+      }
+      throw e;
+    }
+  } catch (e) {
+    console.error('[PageDownloader] Failed to build PDF:', e);
+    throw new Error('PDF construction failed: ' + e.message);
+  }
+}
+
 // فیلتر کردن منابع بر اساس تنظیمات پیشرفته
 function shouldIncludeResource(url, contentType, fileSize) {
   // بررسی الگوی URL شامل
@@ -1168,6 +1203,8 @@ async function handleDownload(tabId, settings = null) {
     let zipData;
     if (currentSettings.exportFormat === 'mhtml') {
       zipData = await buildMHTML(tab);
+    } else if (currentSettings.exportFormat === 'pdf') {
+      zipData = await buildPDF(tab);
     } else if (currentSettings.enableCrawling) {
       zipData = await crawlAndDownload(tab);
     } else {
@@ -1175,8 +1212,17 @@ async function handleDownload(tabId, settings = null) {
     }
 
     const { base64, title } = zipData;
-    const filename = currentSettings.exportFormat === 'mhtml' ? `${sanitizeZipName(title)}.mhtml` : `${sanitizeZipName(title)}.zip`;
-    const dataUrl = currentSettings.exportFormat === 'mhtml' ? `data:application/x-mimearchive;base64,${base64}` : `data:application/zip;base64,${base64}`;
+    let filename, dataUrl;
+    if (currentSettings.exportFormat === 'mhtml') {
+      filename = `${sanitizeZipName(title)}.mhtml`;
+      dataUrl = `data:application/x-mimearchive;base64,${base64}`;
+    } else if (currentSettings.exportFormat === 'pdf') {
+      filename = `${sanitizeZipName(title)}.pdf`;
+      dataUrl = `data:application/pdf;base64,${base64}`;
+    } else {
+      filename = `${sanitizeZipName(title)}.zip`;
+      dataUrl = `data:application/zip;base64,${base64}`;
+    }
 
     console.log('[PageDownloader] شروع دانلود:', filename, 'حجم base64:', base64.length);
     const downloadId = await chrome.downloads.download({ url: dataUrl, filename, saveAs: true });
