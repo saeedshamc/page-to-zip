@@ -472,6 +472,9 @@ async function init() {
     });
   });
 
+  // نمایش راهنمای میانبرها
+  showStatus('از میانبرهای کیبورد استفاده کنید: Ctrl+Shift+D/S/T', 'info');
+
   // بارگذاری تنظیمات هنگام تغییر
   const inputs = ['includeImages', 'includeVideos', 'includeAudio', 'includeFonts', 'maxFileSize', 'followRedirects', 'enableCrawling', 'crawlDepth', 'maxPages', 'followInternalLinks', 'sameDomain', 'concurrentDownloads', 'exportFormat', 'imageQuality', 'urlPattern', 'excludePattern', 'minFileSize', 'excludeExternalDomains', 'nofollowIgnore', 'pathFilter', 'crawlIncludePattern', 'crawlExcludePattern', 'downloadSpeedLimit', 'requestDelay', 'requestTimeout', 'pageLoadTimeout', 'maxDownloadTime'];
   inputs.forEach(id => {

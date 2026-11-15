@@ -12,6 +12,29 @@
     "default_popup": "popup.html",
     "default_title": "دانلود کامل صفحه به صورت ZIP"
   },
+  "commands": {
+    "open-popup": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+D",
+        "mac": "Command+Shift+D"
+      },
+      "description": "باز کردن پاپ‌آپ دانلود"
+    },
+    "quick-download": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "دانلود سریع با تنظیمات پیش‌فرض"
+    },
+    "toggle-theme": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+T",
+        "mac": "Command+Shift+T"
+      },
+      "description": "تغییر تم تاریک/روشن"
+    }
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

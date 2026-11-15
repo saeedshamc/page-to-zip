@@ -411,6 +411,40 @@
     body.dark-mode .preset-btn:hover {
       background: #374151;
     }
+    .shortcuts-list {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 4px;
+    }
+    body.dark-mode .shortcuts-list {
+      background: #2d2d2d;
+    }
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 12px;
+    }
+    .shortcut-key {
+      background: #e5e7eb;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #374151;
+    }
+    body.dark-mode .shortcut-key {
+      background: #4a4a4a;
+      color: #e5e5e5;
+    }
+    .shortcut-desc {
+      color: #6b7280;
+    }
+    body.dark-mode .shortcut-desc {
+      color: #9ca3af;
+    }
     select {
       flex: 1;
       padding: 5px;
@@ -643,6 +677,24 @@
 
     <button id="downloadBtn" class="btn btn-download">دانلود صفحه</button>
     <button id="previewBtn" class="btn btn-secondary">پیش‌نمایش تنظیمات</button>
+
+    <div class="separator"></div>
+
+    <h3>میانبرهای کیبورد</h3>
+    <div class="shortcuts-list">
+      <div class="shortcut-item">
+        <span class="shortcut-key">Ctrl+Shift+D</span>
+        <span class="shortcut-desc">باز کردن پاپ‌آپ</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">Ctrl+Shift+S</span>
+        <span class="shortcut-desc">دانلود سریع</span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-key">Ctrl+Shift+T</span>
+        <span class="shortcut-desc">تغییر تم</span>
+      </div>
+    </div>
 
     <div id="status" class="status"></div>
   </div>

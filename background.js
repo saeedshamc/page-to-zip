@@ -1062,6 +1062,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success });
     return true;
   }
+  if (request.action === 'quickDownload') {
+    // دانلود سریع با تنظیمات پیش‌فرض
+    chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
+      if (tabs[0]) {
+        handleDownload(tabs[0].id, null).catch(e => {
+          console.error('[PageDownloader] Quick download error:', e);
+        });
+      }
+    });
+    sendResponse({ success: true });
+    return true;
+  }
+  if (request.action === 'toggleTheme') {
+    chrome.storage.local.get('theme').then(result => {
+      const currentTheme = result.theme || 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      chrome.storage.local.set({ theme: newTheme });
+    });
+    sendResponse({ success: true });
+    return true;
+  }
 });
 
 // وضعیت پیشرفت فعلی
@@ -1527,4 +1548,28 @@ loadSettings();
 chrome.action.onClicked.addListener(async (tab) => {
   console.log('[PageDownloader] کلیک شد. تب:', tab && tab.id, tab && tab.url);
   await handleDownload(tab.id);
+});
+
+// هندل کردن keyboard shortcuts
+chrome.commands.onCommand.addListener((command) => {
+  if (command === 'open-popup') {
+    // باز کردن پاپ‌آپ (Chrome خودش این را هندل می‌کند)
+    console.log('[PageDownloader] Open popup command');
+  } else if (command === 'quick-download') {
+    // دانلود سریع با تنظیمات پیش‌فرض
+    chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
+      if (tabs[0]) {
+        handleDownload(tabs[0].id, null).catch(e => {
+          console.error('[PageDownloader] Quick download error:', e);
+        });
+      }
+    });
+  } else if (command === 'toggle-theme') {
+    // تغییر تم
+    chrome.storage.local.get('theme').then(result => {
+      const currentTheme = result.theme || 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      chrome.storage.local.set({ theme: newTheme });
+    });
+  }
 });
