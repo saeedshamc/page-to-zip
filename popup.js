@@ -41,6 +41,13 @@ function applyTheme(theme) {
   }
 }
 
+// تغییر زبان
+function setLanguage(lang) {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
+  chrome.storage.local.set({ language: lang });
+}
+
 function toggleTheme() {
   const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -442,6 +449,12 @@ async function startDownload() {
 
 // مقداردهی اولیه
 async function init() {
+  // بارگذاری زبان
+  const langResult = await chrome.storage.local.get('language');
+  const savedLang = langResult.language || 'fa';
+  document.getElementById('languageSelect').value = savedLang;
+  setLanguage(savedLang);
+
   await loadProfiles();
   const settings = await loadSettings();
 
@@ -475,6 +488,11 @@ async function init() {
   // باز کردن viewer
   document.getElementById('openViewerBtn').addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('viewer.html') });
+  });
+
+  // تغییر زبان
+  document.getElementById('languageSelect').addEventListener('change', (e) => {
+    setLanguage(e.target.value);
   });
 
   // نمایش راهنمای میانبرها

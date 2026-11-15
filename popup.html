@@ -33,6 +33,23 @@
       align-items: center;
       margin-bottom: 15px;
     }
+    .header-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .language-select {
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      background: white;
+    }
+    body.dark-mode .language-select {
+      background: #3d3d3d;
+      border-color: #4a4a4a;
+      color: #e5e5e5;
+    }
     .theme-toggle {
       background: none;
       border: none;
@@ -464,8 +481,14 @@
 <body>
   <div class="container">
     <div class="header">
-      <h2>تنظیمات دانلود صفحه</h2>
-      <button id="themeToggle" class="theme-toggle">🌙</button>
+      <h2 data-i18n="title">تنظیمات دانلود صفحه</h2>
+      <div class="header-controls">
+        <select id="languageSelect" class="language-select">
+          <option value="fa">فارسی</option>
+          <option value="en">English</option>
+        </select>
+        <button id="themeToggle" class="theme-toggle">🌙</button>
+      </div>
     </div>
 
     <div class="separator"></div>
@@ -718,6 +741,7 @@
     </div>
   </div>
 
+  <script src="translations.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
